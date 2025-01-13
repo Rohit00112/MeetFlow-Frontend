@@ -115,7 +115,12 @@ const Modal = ({
           <Icon icon="material-symbols:link-rounded" width="24" height="24" />
           Create a meeting for later
         </button>
-        <button className="w-full flex items-center gap-6 hover:bg-gray-100 px-4 py-2 rounded">
+        <button
+          className="w-full flex items-center gap-6 hover:bg-gray-100 px-4 py-2 rounded"
+          onClick={() => {
+            window.location.href = "/meeting";
+          }}
+        >
           <Icon icon="ic:baseline-plus" width="24" height="24" />
           Start an instant meeting
         </button>
