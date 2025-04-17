@@ -1,6 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import Logo from "@/public/logo.png";
+import { useAuth } from "@/context/AuthContext";
+import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 
 // Separate time formatting logic
 const getFormattedDateTime = (): string => {
@@ -29,17 +34,54 @@ const NavIcon = ({ icon, size = 24 }: IconProps) => (
 );
 
 const Navbar = () => {
+  const { user, logout } = useAuth();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Handle clicks outside the dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    setDropdownOpen(false);
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user || !user.name) return 'A';
+
+    const nameParts = user.name.split(' ');
+    if (nameParts.length === 1) return nameParts[0].charAt(0).toUpperCase();
+
+    return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
+  };
+
   return (
     <nav className="flex justify-between p-4 text-[#5F6367]">
       <div className="flex items-center">
-        <Image
-          src={Logo}
-          alt="MeetFlow Logo"
-          width={120}
-          height={120}
-          priority
-        />
-        <span className="ml-1 mb-1 text-2xl">Meet</span>
+        <Link href="/">
+          <div className="flex items-center">
+            <Image
+              src={Logo}
+              alt="MeetFlow Logo"
+              width={120}
+              height={120}
+              priority
+            />
+            <span className="ml-1 mb-1 text-2xl">Meet</span>
+          </div>
+        </Link>
       </div>
 
       <div className="flex gap-14">
@@ -52,9 +94,54 @@ const Navbar = () => {
 
         <div className="flex gap-3 items-center">
           <NavIcon icon="mage:dots-menu" />
-          <div className="flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full">
-            <span className="text-xl font-bold">A</span>
-          </div>
+
+          {user ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                aria-expanded={dropdownOpen}
+                aria-haspopup="true"
+              >
+                <span className="text-sm font-bold">{getUserInitials()}</span>
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  </div>
+
+                  <Link href="/profile" onClick={() => setDropdownOpen(false)}>
+                    <div className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
+                      Your Profile
+                    </div>
+                  </Link>
+
+                  <Link href="/settings" onClick={() => setDropdownOpen(false)}>
+                    <div className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer">
+                      Settings
+                    </div>
+                  </Link>
+
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href="/auth/login">
+              <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg transition-colors text-sm">
+                <NavIcon icon="heroicons:login" size={16} />
+                Sign in
+              </button>
+            </Link>
+          )}
         </div>
       </div>
     </nav>
