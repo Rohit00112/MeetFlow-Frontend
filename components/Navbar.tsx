@@ -99,11 +99,23 @@ const Navbar = () => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center justify-center w-8 h-8 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-full hover:opacity-90 transition-colors overflow-hidden"
                 aria-expanded={dropdownOpen}
                 aria-haspopup="true"
               >
-                <span className="text-sm font-bold">{getUserInitials()}</span>
+                {user.avatar ? (
+                  <Image
+                    src={user.avatar}
+                    alt={user.name}
+                    width={32}
+                    height={32}
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-blue-500 text-white">
+                    <span className="text-sm font-bold">{getUserInitials()}</span>
+                  </div>
+                )}
               </button>
 
               {dropdownOpen && (

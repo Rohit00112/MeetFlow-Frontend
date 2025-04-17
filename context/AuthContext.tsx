@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, profileImage?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  updateProfile: (name: string, email: string, profileImage?: string | null) => Promise<void>;
 }
 
 // Create the AuthContext
@@ -187,6 +188,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Update profile function
+  const updateProfile = async (name: string, email: string, profileImage?: string | null) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // In a real app, you would make an API call here
+      // For now, we'll simulate a successful profile update
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Mock validation
+      if (!name || !email) {
+        throw new Error("Name and email are required");
+      }
+
+      if (!user) {
+        throw new Error("You must be logged in to update your profile");
+      }
+
+      // Determine avatar - use uploaded image, current avatar, or generate from initials
+      let avatar = profileImage || user.avatar;
+
+      // If no profile image was uploaded and no current avatar, use UI Avatars API
+      if (!avatar) {
+        avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
+      }
+
+      const updatedUser: User = {
+        ...user,
+        name,
+        email,
+        avatar
+      };
+
+      // Save to localStorage
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      setUser(updatedUser);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -194,7 +242,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     register,
     logout,
-    forgotPassword
+    forgotPassword,
+    updateProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
