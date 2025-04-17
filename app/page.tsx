@@ -8,6 +8,8 @@ import Image3 from "@/public/slider3.png";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 interface ImageProps {
   src: StaticImageData;
@@ -213,6 +215,7 @@ const DebugInfo = ({ isOpen }: { isOpen: boolean }) => {
 };
 
 export default function Home() {
+  const { user } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [inputValue, setInputValue] = useState("");
   const [currentSlide, setCurrentSlide] = useState<ImageProps>(images[0]);
@@ -253,25 +256,34 @@ export default function Home() {
               Connect, collaborate, and celebrate from anywhere with Google Meet
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => {
-                    console.log('Button clicked, current state:', isDropdownOpen);
-                    setIsDropdownOpen(!isDropdownOpen);
-                  }}
-                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-                  aria-label="Open meeting options"
-                  aria-expanded={isDropdownOpen}
-                  aria-haspopup="true"
-                >
-                  <Icon icon="ri:video-add-line" className="w-5 h-5" />
-                  New Meeting
-                </button>
-                <SimpleDropdown
-                  isOpen={isDropdownOpen}
-                  onClose={() => setIsDropdownOpen(false)}
-                />
-              </div>
+              {user ? (
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => {
+                      console.log('Button clicked, current state:', isDropdownOpen);
+                      setIsDropdownOpen(!isDropdownOpen);
+                    }}
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                    aria-label="Open meeting options"
+                    aria-expanded={isDropdownOpen}
+                    aria-haspopup="true"
+                  >
+                    <Icon icon="ri:video-add-line" className="w-5 h-5" />
+                    New Meeting
+                  </button>
+                  <SimpleDropdown
+                    isOpen={isDropdownOpen}
+                    onClose={() => setIsDropdownOpen(false)}
+                  />
+                </div>
+              ) : (
+                <Link href="/auth/login">
+                  <button className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors">
+                    <Icon icon="ri:video-add-line" className="w-5 h-5" />
+                    New Meeting
+                  </button>
+                </Link>
+              )}
               <div className="flex items-center gap-2 border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-blue-600">
                 <Icon
                   icon="material-symbols:keyboard-outline"
