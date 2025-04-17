@@ -40,14 +40,56 @@ const images: ImageProps[] = [
   },
 ];
 
-// ImageSlider Component
-const ImageSlider = ({ images }: { images: ImageProps[] }) => {
-  const [index, setIndex] = React.useState(0);
+// Custom hook for smooth scrolling
+const useSlider = (totalItems: number, initialIndex = 0) => {
+  const [index, setIndex] = React.useState(initialIndex);
+  const [isTransitioning, setIsTransitioning] = React.useState(false);
 
-  const handleNext = () =>
-    setIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-  const handlePrev = () =>
-    setIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  const goToSlide = React.useCallback((newIndex: number) => {
+    if (isTransitioning) return;
+    setIsTransitioning(true);
+    setIndex(newIndex);
+    setTimeout(() => setIsTransitioning(false), 700); // Match transition duration
+  }, [isTransitioning]);
+
+  const nextSlide = React.useCallback(() => {
+    const newIndex = index === totalItems - 1 ? 0 : index + 1;
+    goToSlide(newIndex);
+  }, [index, totalItems, goToSlide]);
+
+  const prevSlide = React.useCallback(() => {
+    const newIndex = index === 0 ? totalItems - 1 : index - 1;
+    goToSlide(newIndex);
+  }, [index, totalItems, goToSlide]);
+
+  return { index, isTransitioning, nextSlide, prevSlide, goToSlide };
+};
+
+// ImageSlider Component
+const ImageSlider = ({ images, onImageChange }: { images: ImageProps[], onImageChange?: (image: ImageProps) => void }) => {
+  const { index, isTransitioning, nextSlide, prevSlide, goToSlide } = useSlider(images.length);
+  const [currentImage, setCurrentImage] = React.useState(images[0]);
+
+  // Update currentImage and call onImageChange when index changes
+  React.useEffect(() => {
+    setCurrentImage(images[index]);
+    if (onImageChange) onImageChange(images[index]);
+  }, [index, images, onImageChange]);
+
+  const handleNext = () => {
+    nextSlide();
+  };
+
+  const handlePrev = () => {
+    prevSlide();
+  };
+
+  const handleDotClick = (i: number) => {
+    if (i === index) return;
+    goToSlide(i);
+  };
+
+  // Initial setup is handled by the index effect above
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -55,23 +97,43 @@ const ImageSlider = ({ images }: { images: ImageProps[] }) => {
         <button
           onClick={handlePrev}
           aria-label="Previous Image"
-          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100"
+          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 z-10"
+          disabled={isTransitioning}
         >
           <Icon icon="akar-icons:chevron-left" className="w-6 h-6" />
         </button>
-        <div className="relative w-56 h-56">
-          <Image
-            src={images[index].src}
-            alt={images[index].alt}
-            fill
-            className="rounded-full object-cover transition-opacity duration-500"
-            priority
-          />
+        <div className="relative w-56 h-56 overflow-hidden rounded-full image-slider-container">
+          <div
+            className="absolute w-full h-full transition-transform duration-700"
+            style={{
+              transform: `translateX(-${index * (100 / images.length)}%)`,
+              width: `${images.length * 100}%`,
+              display: 'flex',
+              willChange: 'transform'
+            }}
+          >
+            {images.map((image, i) => (
+              <div
+                key={i}
+                className="relative w-full h-full flex-shrink-0 image-slider-item"
+                style={{ width: `${100 / images.length}%` }}
+              >
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  className="object-cover"
+                  priority={i === 0}
+                />
+              </div>
+            ))}
+          </div>
         </div>
         <button
           onClick={handleNext}
           aria-label="Next Image"
-          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100"
+          className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 z-10"
+          disabled={isTransitioning}
         >
           <Icon icon="akar-icons:chevron-right" className="w-6 h-6" />
         </button>
@@ -80,11 +142,12 @@ const ImageSlider = ({ images }: { images: ImageProps[] }) => {
         {images.map((_, i) => (
           <button
             key={i}
-            onClick={() => setIndex(i)}
+            onClick={() => handleDotClick(i)}
             aria-label={`Select Image ${i + 1}`}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
               i === index ? "bg-blue-600 w-4" : "bg-gray-300"
             }`}
+            disabled={isTransitioning}
           />
         ))}
       </div>
@@ -92,54 +155,93 @@ const ImageSlider = ({ images }: { images: ImageProps[] }) => {
   );
 };
 
-// Modal Component
-const Modal = ({
+// Simple Dropdown Menu Component
+const SimpleDropdown = ({
   isOpen,
   onClose,
 }: {
   isOpen: boolean;
   onClose: () => void;
 }) => {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setMounted(true);
+    } else {
+      const timer = setTimeout(() => setMounted(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!mounted) return null;
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-transparent flex items-center mt-72 ml-16"
-      onClick={onClose}
+      className={`absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg py-1 w-64 border border-gray-200 z-50 transition-all duration-200 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
     >
-      <div
-        className="bg-white p-2 rounded-lg shadow-lg space-y-2"
-        onClick={(e) => e.stopPropagation()} // Prevent modal close on content click
+      <button className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option">
+        <Icon icon="material-symbols:link-rounded" width="20" height="20" />
+        <span>Create a meeting for later</span>
+      </button>
+      <button
+        className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option"
+        onClick={() => {
+          window.location.href = "/meeting";
+        }}
       >
-        <button className="w-full flex items-center gap-6 hover:bg-gray-100 px-4 py-2 rounded">
-          <Icon icon="material-symbols:link-rounded" width="24" height="24" />
-          Create a meeting for later
-        </button>
-        <button
-          className="w-full flex items-center gap-6 hover:bg-gray-100 px-4 py-2 rounded"
-          onClick={() => {
-            window.location.href = "/meeting";
-          }}
-        >
-          <Icon icon="ic:baseline-plus" width="24" height="24" />
-          Start an instant meeting
-        </button>
-        <button className="w-full flex items-center gap-6 hover:bg-gray-100 px-4 py-2 rounded">
-          <Icon icon="lucide:calendar" width="24" height="24" />
-          Schedule in Google Calendar
-        </button>
-      </div>
+        <Icon icon="ic:baseline-plus" width="20" height="20" />
+        <span>Start an instant meeting</span>
+      </button>
+      <button className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option">
+        <Icon icon="lucide:calendar" width="20" height="20" />
+        <span>Schedule in Google Calendar</span>
+      </button>
+    </div>
+  );
+};
+
+// Debug component to show state
+const DebugInfo = ({ isOpen }: { isOpen: boolean }) => {
+  if (process.env.NODE_ENV === 'production') return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs z-[1000]">
+      Dropdown state: {isOpen ? 'OPEN' : 'CLOSED'}
     </div>
   );
 };
 
 export default function Home() {
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [index] = React.useState(0);
+  const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [currentSlide, setCurrentSlide] = useState<ImageProps>(images[0]);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Log state changes
+  React.useEffect(() => {
+    console.log('Dropdown state changed:', isDropdownOpen);
+  }, [isDropdownOpen]);
+
+  // Add click outside handler
+  React.useEffect(() => {
+    if (!isDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   return (
     <>
+      <DebugInfo isOpen={isDropdownOpen} />
       <Navbar />
       <main className="px-4 md:px-6 mt-20 md:mt-52 ml-12">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -151,17 +253,25 @@ export default function Home() {
               Connect, collaborate, and celebrate from anywhere with Google Meet
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
-              >
-                <Icon icon="ri:video-add-line" className="w-5 h-5" />
-                New Meeting
-              </button>
-              <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-              />
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => {
+                    console.log('Button clicked, current state:', isDropdownOpen);
+                    setIsDropdownOpen(!isDropdownOpen);
+                  }}
+                  className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                  aria-label="Open meeting options"
+                  aria-expanded={isDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  <Icon icon="ri:video-add-line" className="w-5 h-5" />
+                  New Meeting
+                </button>
+                <SimpleDropdown
+                  isOpen={isDropdownOpen}
+                  onClose={() => setIsDropdownOpen(false)}
+                />
+              </div>
               <div className="flex items-center gap-2 border-2 border-gray-300 rounded-lg px-3 py-2 focus-within:border-blue-600">
                 <Icon
                   icon="material-symbols:keyboard-outline"
@@ -199,12 +309,15 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col items-center text-center space-y-6">
-            <ImageSlider images={images} />
+            <ImageSlider
+              images={images}
+              onImageChange={setCurrentSlide}
+            />
             <div className="max-w-md space-y-3">
               <h2 className="text-2xl font-semibold text-gray-800">
-                {images[index].title}
+                {currentSlide.title}
               </h2>
-              <p className="text-gray-600">{images[index].description}</p>
+              <p className="text-gray-600">{currentSlide.description}</p>
             </div>
           </div>
         </div>
