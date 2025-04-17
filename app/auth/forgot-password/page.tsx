@@ -30,8 +30,8 @@ export default function ForgotPasswordPage() {
             <Image
               src="/google-meet-logo.svg"
               alt="Google Meet Logo"
-              width={120}
-              height={40}
+              width={140}
+              height={32}
               priority
             />
           </Link>
