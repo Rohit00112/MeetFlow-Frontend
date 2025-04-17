@@ -18,16 +18,16 @@ const getInitials = (name: string) => {
 };
 
 // Avatar component that shows image or initials
-const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, size?: number }) => {
+const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null, name: string, size?: number, className?: string }) => {
   if (src) {
     return (
-      <div className="relative" style={{ width: size, height: size }}>
+      <div className={`relative ${className}`} style={{ width: size, height: size }}>
         <Image
           src={src}
           alt={name || 'Avatar'}
           width={size}
           height={size}
-          className="rounded-full object-cover"
+          className="rounded-full object-cover ring-4 ring-white shadow-lg"
         />
       </div>
     );
@@ -39,7 +39,7 @@ const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, s
 
   return (
     <div
-      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium`}
+      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium ring-4 ring-white shadow-lg ${className}`}
       style={{ width: size, height: size, fontSize: size / 2.5 }}
     >
       {initials}
@@ -143,39 +143,64 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">User Profile</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">Personal details and settings</p>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Profile Header with Background */}
+        <div className="relative mb-8">
+          <div className="h-48 w-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-xl overflow-hidden">
+            <div className="absolute inset-0 bg-opacity-20 bg-black flex items-center justify-center">
+              <div className="w-full h-full bg-cover bg-center opacity-20" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1579548122080-c35fd6820ecb?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')" }}></div>
             </div>
-            {!isEditing ? (
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <Icon icon="heroicons:pencil" className="h-4 w-4 mr-2" />
-                Edit Profile
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-            )}
           </div>
 
-          <div className="border-t border-gray-200">
+          <div className="absolute -bottom-16 left-0 w-full flex justify-center">
+            <div
+              onClick={handleAvatarClick}
+              className={`${isEditing ? 'cursor-pointer transform hover:scale-105' : ''} transition-all duration-300`}
+              title={isEditing ? "Click to change profile picture" : ""}
+            >
+              <Avatar src={profileImageUrl} name={name} size={130} />
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Card with Elevated Design */}
+        <div className="bg-white shadow-xl rounded-xl overflow-hidden mt-12 transition-all duration-300 hover:shadow-2xl">
+          <div className="px-6 py-8 sm:px-8 flex justify-between items-center border-b border-gray-200">
+            <div className="text-center w-full mt-4">
+              <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
+              <p className="text-gray-500 flex items-center justify-center mt-1">
+                <Icon icon="heroicons:envelope" className="h-4 w-4 mr-1" />
+                {email}
+              </p>
+              <div className="mt-4 flex justify-center space-x-3">
+                {!isEditing ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-md transition-all duration-300 hover:shadow-lg"
+                  >
+                    <Icon icon="heroicons:pencil" className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition-all duration-300"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div>
             <form onSubmit={handleSaveProfile}>
-              <div className="px-4 py-5 sm:p-6">
+              <div className="px-6 py-6 sm:px-8">
                 {saveError && (
-                  <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md shadow-sm">
                     <div className="flex">
                       <div className="flex-shrink-0">
                         <Icon icon="heroicons:exclamation-circle" className="h-5 w-5 text-red-500" />
@@ -187,82 +212,70 @@ export default function ProfilePage() {
                   </div>
                 )}
 
-                <div className="flex flex-col items-center mb-6">
-                  <div
-                    onClick={handleAvatarClick}
-                    className={`${isEditing ? 'cursor-pointer hover:opacity-80' : ''} transition-opacity duration-200 mb-2`}
-                    title={isEditing ? "Click to change profile picture" : ""}
-                  >
-                    <Avatar src={profileImageUrl} name={name} size={120} />
+                {isEditing && (
+                  <div className="flex flex-col items-center mb-8">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      className="hidden"
+                      id="profile-image"
+                    />
+                    <p className="text-sm text-blue-600 mt-1 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center">
+                      <Icon icon="heroicons:camera" className="h-4 w-4 mr-2" />
+                      {profileImage ? profileImage.name : "Click avatar to change profile picture"}
+                    </p>
                   </div>
-                  {isEditing && (
-                    <>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleFileChange}
-                        accept="image/*"
-                        className="hidden"
-                        id="profile-image"
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        {profileImage ? profileImage.name : "Click to change profile picture"}
-                      </p>
-                    </>
-                  )}
-                </div>
+                )}
 
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                      Full Name
-                    </label>
-                    <div className="mt-1">
-                      {isEditing ? (
+                {isEditing ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="group">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <Icon icon="heroicons:user" className="h-4 w-4 mr-1 text-blue-500" />
+                        Full Name
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
                         <input
                           type="text"
                           name="name"
                           id="name"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
                           placeholder="Your full name"
                         />
-                      ) : (
-                        <p className="py-2">{name}</p>
-                      )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Email Address
-                    </label>
-                    <div className="mt-1">
-                      {isEditing ? (
+                    <div className="group">
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <Icon icon="heroicons:envelope" className="h-4 w-4 mr-1 text-blue-500" />
+                        Email Address
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
                         <input
                           type="email"
                           name="email"
                           id="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
                           placeholder="Your email address"
                         />
-                      ) : (
-                        <p className="py-2">{email}</p>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null}
               </div>
 
               {isEditing && (
-                <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                <div className="px-6 py-4 bg-gray-50 sm:px-8 border-t border-gray-100 flex justify-end">
                   <button
                     type="submit"
                     disabled={saveLoading}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex justify-center py-2 px-6 border border-transparent shadow-md text-sm font-medium rounded-full text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-lg transform hover:-translate-y-0.5"
                   >
                     {saveLoading ? (
                       <>
@@ -282,64 +295,88 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Account Settings</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Manage your account preferences</p>
-          </div>
-          <div className="border-t border-gray-200">
-            <dl>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Password</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex justify-between items-center">
-                  <span>••••••••</span>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="font-medium text-blue-600 hover:text-blue-500"
-                  >
-                    Change Password
-                  </Link>
-                </dd>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Account Settings Card */}
+          <div className="bg-white shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+            <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center">
+                <Icon icon="heroicons:cog-6-tooth" className="h-5 w-5 text-blue-500 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Account Settings</h3>
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Account Status</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                    Active
-                  </span>
-                </dd>
-              </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                <dt className="text-sm font-medium text-gray-500">Account Created</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {new Date().toLocaleDateString()}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        <div className="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Danger Zone</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">Irreversible account actions</p>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-            <div className="sm:flex sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">Delete Account</h3>
-                <div className="mt-1 text-sm text-gray-500">
-                  <p>Once you delete your account, there is no going back. Please be certain.</p>
+              <p className="mt-1 text-sm text-gray-500">Manage your account preferences</p>
+            </div>
+            <div>
+              <dl>
+                <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100">
+                  <div className="flex items-center mb-2 sm:mb-0">
+                    <Icon icon="heroicons:key" className="h-5 w-5 text-gray-400 mr-2" />
+                    <dt className="text-sm font-medium text-gray-700">Password</dt>
+                  </div>
+                  <dd className="text-sm text-gray-900 flex items-center justify-end">
+                    <span className="mr-3">••••••••</span>
+                    <Link
+                      href="/auth/forgot-password"
+                      className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group transition-all duration-200"
+                    >
+                      <span>Change</span>
+                      <Icon icon="heroicons:arrow-right" className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
+                    </Link>
+                  </dd>
                 </div>
+                <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100">
+                  <div className="flex items-center mb-2 sm:mb-0">
+                    <Icon icon="heroicons:check-badge" className="h-5 w-5 text-gray-400 mr-2" />
+                    <dt className="text-sm font-medium text-gray-700">Account Status</dt>
+                  </div>
+                  <dd className="text-sm text-gray-900">
+                    <span className="px-3 py-1 inline-flex items-center text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      <Icon icon="heroicons:check-circle" className="h-3 w-3 mr-1" />
+                      Active
+                    </span>
+                  </dd>
+                </div>
+                <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center mb-2 sm:mb-0">
+                    <Icon icon="heroicons:calendar" className="h-5 w-5 text-gray-400 mr-2" />
+                    <dt className="text-sm font-medium text-gray-700">Account Created</dt>
+                  </div>
+                  <dd className="text-sm text-gray-900">
+                    {new Date().toLocaleDateString()}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+
+          {/* Danger Zone Card */}
+          <div className="bg-white shadow-lg rounded-xl overflow-hidden transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1">
+            <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-red-50 to-orange-50">
+              <div className="flex items-center">
+                <Icon icon="heroicons:exclamation-triangle" className="h-5 w-5 text-red-500 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Danger Zone</h3>
               </div>
-              <div className="mt-5 sm:mt-0 sm:ml-6 sm:flex-shrink-0">
-                <button
-                  type="button"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <Icon icon="heroicons:trash" className="h-4 w-4 mr-2" />
-                  Delete Account
-                </button>
+              <p className="mt-1 text-sm text-gray-500">Irreversible account actions</p>
+            </div>
+            <div className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-red-50 p-4 rounded-lg border border-red-100">
+                <div className="mb-4 sm:mb-0">
+                  <h3 className="text-sm font-medium text-gray-900 flex items-center">
+                    <Icon icon="heroicons:trash" className="h-4 w-4 text-red-500 mr-1" />
+                    Delete Account
+                  </h3>
+                  <div className="mt-1 text-sm text-gray-500">
+                    <p>Once you delete your account, there is no going back. Please be certain.</p>
+                  </div>
+                </div>
+                <div className="sm:ml-6 sm:flex-shrink-0">
+                  <button
+                    type="button"
+                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-full text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-300 hover:shadow-lg"
+                  >
+                    <Icon icon="heroicons:trash" className="h-4 w-4 mr-2" />
+                    Delete Account
+                  </button>
+                </div>
               </div>
             </div>
           </div>
