@@ -145,6 +145,19 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200 group"
+          >
+            <Icon
+              icon="heroicons:arrow-left"
+              className="h-5 w-5 mr-2 transform group-hover:-translate-x-1 transition-transform duration-200"
+            />
+            Back to Home
+          </Link>
+        </div>
         {/* Profile Header with Background */}
         <div className="relative mb-8">
           <div className="h-48 w-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-xl overflow-hidden">
