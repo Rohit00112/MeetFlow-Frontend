@@ -28,10 +28,10 @@ export default function ForgotPasswordPage() {
         <div className="text-center">
           <Link href="/" className="flex justify-center">
             <Image
-              src="/google-meet-logo.svg"
+              src="/google-meet-official-logo.png"
               alt="Google Meet Logo"
-              width={140}
-              height={32}
+              width={124}
+              height={40}
               priority
             />
           </Link>
