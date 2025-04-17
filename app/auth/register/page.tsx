@@ -1,12 +1,52 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import GoogleLogo from "@/public/google-logo.svg";
+
+// Helper function to get initials from name
+const getInitials = (name: string) => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+};
+
+// Avatar component that shows image or initials
+const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, size?: number }) => {
+  if (src) {
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <Image
+          src={src}
+          alt={name || 'Avatar'}
+          width={size}
+          height={size}
+          className="rounded-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  // If no image, show initials
+  const initials = name ? getInitials(name) : '?';
+  const bgColor = name ? `bg-blue-500` : 'bg-gray-300';
+
+  return (
+    <div
+      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium`}
+      style={{ width: size, height: size, fontSize: size / 2.5 }}
+    >
+      {initials}
+    </div>
+  );
+};
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -15,8 +55,36 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { register, loading, error } = useAuth();
   const router = useRouter();
+
+  // Create object URL for preview when profile image changes
+  useEffect(() => {
+    if (profileImage) {
+      const objectUrl = URL.createObjectURL(profileImage);
+      setProfileImageUrl(objectUrl);
+
+      // Free memory when this component is unmounted
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+  }, [profileImage]);
+
+  // Handle file input change
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfileImage(e.target.files[0]);
+    }
+  };
+
+  // Handle avatar click to open file dialog
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +103,18 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(name, email, password);
+      // Convert image to base64 if it exists
+      let imageBase64 = null;
+      if (profileImage) {
+        imageBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(profileImage);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = error => reject(error);
+        });
+      }
+
+      await register(name, email, password, imageBase64);
       router.push("/"); // Redirect to home page after successful registration
     } catch (error) {
       console.error("Registration failed:", error);
@@ -84,6 +163,28 @@ export default function RegisterPage() {
 
         <div className="bg-white p-8 rounded-lg max-w-md w-full mx-auto">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Profile Image Upload */}
+            <div className="flex flex-col items-center mb-6">
+              <div
+                onClick={handleAvatarClick}
+                className="cursor-pointer hover:opacity-80 transition-opacity duration-200 mb-2"
+                title="Click to upload profile picture"
+              >
+                <Avatar src={profileImageUrl} name={name} size={100} />
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+                id="profile-image"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                {profileImage ? profileImage.name : "Click to upload profile picture"}
+              </p>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <input

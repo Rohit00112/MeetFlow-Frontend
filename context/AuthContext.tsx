@@ -16,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, profileImage?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
 }
@@ -53,29 +53,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // In a real app, you would make an API call here
       // For now, we'll simulate a successful login with a mock user
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mock validation
       if (email !== "user@example.com" || password !== "password") {
         throw new Error("Invalid email or password");
       }
-      
+
       const mockUser: User = {
         id: "1",
         email: email,
         name: "Demo User",
-        avatar: "https://ui-avatars.com/api/?name=Demo+User"
+        avatar: "https://ui-avatars.com/api/?name=Demo+User&background=4285F4&color=fff&size=200"
       };
-      
+
       // Save to localStorage (in a real app, you might use cookies or other methods)
       localStorage.setItem("user", JSON.stringify(mockUser));
-      
+
       setUser(mockUser);
     } catch (error) {
       setError(error instanceof Error ? error.message : "An unknown error occurred");
@@ -84,37 +84,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Helper function to get initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   // Register function
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, profileImage?: string | null) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // In a real app, you would make an API call here
       // For now, we'll simulate a successful registration
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mock validation
       if (!name || !email || !password) {
         throw new Error("All fields are required");
       }
-      
+
       if (password.length < 6) {
         throw new Error("Password must be at least 6 characters");
       }
-      
+
+      // Determine avatar - use uploaded image or generate from initials
+      let avatar = profileImage;
+
+      // If no profile image was uploaded, use UI Avatars API to generate one based on initials
+      if (!avatar) {
+        avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
+      }
+
       const mockUser: User = {
         id: "1",
         email: email,
         name: name,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`
+        avatar: avatar
       };
-      
+
       // Save to localStorage
       localStorage.setItem("user", JSON.stringify(mockUser));
-      
+
       setUser(mockUser);
     } catch (error) {
       setError(error instanceof Error ? error.message : "An unknown error occurred");
@@ -126,14 +144,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     setLoading(true);
-    
+
     try {
       // In a real app, you would make an API call here
       // For now, we'll just clear localStorage
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       localStorage.removeItem("user");
       setUser(null);
     } catch (error) {
@@ -147,19 +165,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const forgotPassword = async (email: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // In a real app, you would make an API call here
       // For now, we'll simulate a successful password reset request
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mock validation
       if (!email) {
         throw new Error("Email is required");
       }
-      
+
       // In a real app, this would send a reset link to the user's email
       console.log(`Password reset link sent to ${email}`);
     } catch (error) {
