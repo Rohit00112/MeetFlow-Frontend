@@ -31,10 +31,10 @@ export default function LoginPage() {
         <div className="text-center">
           <Link href="/" className="flex justify-center">
             <Image
-              src="/google-logo.svg"
-              alt="Google Logo"
-              width={75}
-              height={24}
+              src="/google-meet-logo.svg"
+              alt="Google Meet Logo"
+              width={120}
+              height={40}
               priority
             />
           </Link>
