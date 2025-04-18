@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, profileImage?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<boolean>;
   updateProfile: (name: string, email: string, profileImage?: string | null) => Promise<void>;
 }
 
@@ -31,17 +32,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to clear auth state (used internally)
+  const clearAuthState = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
+  };
+
   // Check if user is already logged in
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
-        // In a real app, you would check localStorage, cookies, or make an API call
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const token = localStorage.getItem('token');
+        const storedUser = localStorage.getItem('user');
+
+        if (!token || !storedUser) {
+          setLoading(false);
+          return;
         }
+
+        // Parse stored user data
+        setUser(JSON.parse(storedUser));
+
+        // Validate token with server
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        // If token is invalid, clear auth state
+        if (!response.ok) {
+          clearAuthState();
+          return;
+        }
+
+        // Update user data from server
+        const data = await response.json();
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
       } catch (error) {
-        console.error("Failed to restore authentication state:", error);
+        console.error('Failed to restore authentication state:', error);
+        // Clear invalid auth state
+        clearAuthState();
       } finally {
         setLoading(false);
       }
@@ -56,30 +89,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll simulate a successful login with a mock user
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const data = await response.json();
 
-      // Mock validation
-      if (email !== "user@example.com" || password !== "password") {
-        throw new Error("Invalid email or password");
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      const mockUser: User = {
-        id: "1",
-        email: email,
-        name: "Demo User",
-        avatar: "https://ui-avatars.com/api/?name=Demo+User&background=4285F4&color=fff&size=200"
-      };
+      // Save token to localStorage
+      localStorage.setItem('token', data.token);
 
-      // Save to localStorage (in a real app, you might use cookies or other methods)
-      localStorage.setItem("user", JSON.stringify(mockUser));
+      // Save user data to localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
 
-      setUser(mockUser);
+      setUser(data.user);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -101,19 +133,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll simulate a successful registration
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock validation
+      // Validate input
       if (!name || !email || !password) {
-        throw new Error("All fields are required");
+        throw new Error('All fields are required');
       }
 
       if (password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
+        throw new Error('Password must be at least 6 characters');
       }
 
       // Determine avatar - use uploaded image or generate from initials
@@ -124,19 +150,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
-      const mockUser: User = {
-        id: "1",
-        email: email,
-        name: name,
-        avatar: avatar
-      };
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password, avatar }),
+      });
 
-      // Save to localStorage
-      localStorage.setItem("user", JSON.stringify(mockUser));
+      const data = await response.json();
 
-      setUser(mockUser);
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      // Save token to localStorage
+      localStorage.setItem('token', data.token);
+
+      // Save user data to localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      setUser(data.user);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -147,16 +183,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll just clear localStorage
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      localStorage.removeItem("user");
-      setUser(null);
+      // Clear authentication state
+      clearAuthState();
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error('Logout failed:', error);
     } finally {
       setLoading(false);
     }
@@ -168,21 +198,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll simulate a successful password reset request
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock validation
+      // Validate input
       if (!email) {
-        throw new Error("Email is required");
+        throw new Error('Email is required');
       }
 
-      // In a real app, this would send a reset link to the user's email
-      console.log(`Password reset link sent to ${email}`);
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send password reset email');
+      }
+
+      // In development, log the reset link
+      if (process.env.NODE_ENV !== 'production' && data.resetLink) {
+        console.log('Password reset link:', data.resetLink);
+      }
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
     }
@@ -194,19 +234,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      // In a real app, you would make an API call here
-      // For now, we'll simulate a successful profile update
-
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Mock validation
+      // Validate input
       if (!name || !email) {
-        throw new Error("Name and email are required");
+        throw new Error('Name and email are required');
       }
 
       if (!user) {
-        throw new Error("You must be logged in to update your profile");
+        throw new Error('You must be logged in to update your profile');
+      }
+
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found');
       }
 
       // Determine avatar - use uploaded image, current avatar, or generate from initials
@@ -217,19 +257,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
-      const updatedUser: User = {
-        ...user,
-        name,
-        email,
-        avatar
-      };
+      const response = await fetch('/api/auth/update-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, email, avatar }),
+      });
 
-      // Save to localStorage
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+      const data = await response.json();
 
-      setUser(updatedUser);
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      // Save updated user data to localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      setUser(data.user);
     } catch (error) {
-      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset password function
+  const resetPassword = async (token: string, password: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Validate input
+      if (!token || !password) {
+        throw new Error('Token and password are required');
+      }
+
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -243,6 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     forgotPassword,
+    resetPassword,
     updateProfile
   };
 
