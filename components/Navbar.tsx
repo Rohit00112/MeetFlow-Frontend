@@ -161,7 +161,7 @@ const Navbar = () => {
                 Sign in
               </button>
             </Link>
-          ))}
+          )}
         </div>
       </div>
     </nav>
