@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma-mock';
 import { hashPassword } from '@/lib/password';
 
 export async function POST(request: NextRequest) {

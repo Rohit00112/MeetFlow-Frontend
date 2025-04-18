@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma-mock';
 import { comparePassword } from '@/lib/password';
 import { signJWT } from '@/lib/jwt';
 
