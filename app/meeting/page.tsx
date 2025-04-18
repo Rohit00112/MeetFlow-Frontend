@@ -1,92 +1,184 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAuth } from "@/context/AuthContext";
+import meetingService from "@/services/MeetingService";
 
-const MeetingPage = () => {
+const CreateMeetingPage = () => {
   const { user } = useAuth();
+  const router = useRouter();
+
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [meetingSettings, setMeetingSettings] = useState({
+    allowScreenSharing: true,
+    allowChat: true,
+    muteParticipantsOnEntry: true,
+    allowParticipantsToUnmute: true,
+    allowRecording: false,
+  });
+
+  const handleCreateMeeting = () => {
+    if (!user) return;
+
+    setIsCreating(true);
+    setError(null);
+
+    try {
+      // Create a new meeting
+      const meeting = meetingService.createMeeting(user.id, user.name, meetingSettings);
+
+      // Redirect to the meeting room
+      router.push(`/meeting/${meeting.id}`);
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      setError("An error occurred while creating the meeting. Please try again.");
+      setIsCreating(false);
+    }
+  };
+
+  const handleSettingChange = (setting: string) => {
+    setMeetingSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting as keyof typeof prev]
+    }));
+  };
 
   return (
     <ProtectedRoute>
       <Navbar />
-      <main className="px-4 md:px-6 py-8 max-w-7xl mx-auto">
+      <main className="px-4 md:px-6 py-8 max-w-3xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold">Your Meeting Room</h1>
-            <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
-                <Icon icon="heroicons:phone-x-mark" className="w-5 h-5" />
-                End Meeting
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold">Create a New Meeting</h1>
+            <p className="text-gray-600 mt-2">
+              Set up your meeting preferences and invite participants
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <Icon icon="heroicons:exclamation-circle" className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h2 className="text-lg font-semibold mb-4">Meeting Settings</h2>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="heroicons:computer-desktop" className="w-5 h-5 text-gray-600" />
+                    <span>Allow screen sharing</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={meetingSettings.allowScreenSharing}
+                      onChange={() => handleSettingChange('allowScreenSharing')}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="heroicons:chat-bubble-left-right" className="w-5 h-5 text-gray-600" />
+                    <span>Allow chat</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={meetingSettings.allowChat}
+                      onChange={() => handleSettingChange('allowChat')}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="heroicons:microphone-slash" className="w-5 h-5 text-gray-600" />
+                    <span>Mute participants on entry</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={meetingSettings.muteParticipantsOnEntry}
+                      onChange={() => handleSettingChange('muteParticipantsOnEntry')}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="heroicons:microphone" className="w-5 h-5 text-gray-600" />
+                    <span>Allow participants to unmute themselves</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={meetingSettings.allowParticipantsToUnmute}
+                      onChange={() => handleSettingChange('allowParticipantsToUnmute')}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon icon="heroicons:video-camera" className="w-5 h-5 text-gray-600" />
+                    <span>Allow recording</span>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={meetingSettings.allowRecording}
+                      onChange={() => handleSettingChange('allowRecording')}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={handleCreateMeeting}
+                disabled={isCreating}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreating ? (
+                  <>
+                    <Icon icon="eos-icons:loading" className="animate-spin w-5 h-5" />
+                    Creating Meeting...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="heroicons:video-camera" className="w-5 h-5" />
+                    Start Meeting Now
+                  </>
+                )}
               </button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 bg-gray-900 rounded-lg aspect-video flex items-center justify-center">
-              <div className="text-center text-white">
-                <Icon icon="heroicons:video-camera" className="w-16 h-16 mx-auto mb-4" />
-                <p className="text-xl">Your camera is off</p>
-                <button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
-                  Turn on camera
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold mb-2">Meeting Info</h2>
-                <div className="space-y-2">
-                  <p className="flex items-center gap-2">
-                    <Icon icon="heroicons:link" className="w-5 h-5 text-gray-500" />
-                    <span className="text-sm">meet.google.com/abc-defg-hij</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Icon icon="heroicons:clock" className="w-5 h-5 text-gray-500" />
-                    <span className="text-sm">Started at {new Date().toLocaleTimeString()}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-gray-100 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold mb-2">Participants (1)</h2>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                        {user?.name?.charAt(0) || 'U'}
-                      </div>
-                      <span>{user?.name || 'You'} (Host)</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button className="p-1 text-gray-500 hover:text-gray-700">
-                        <Icon icon="heroicons:microphone-slash" className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-center gap-4">
-            <button className="p-3 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
-              <Icon icon="heroicons:microphone" className="w-6 h-6" />
-            </button>
-            <button className="p-3 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
-              <Icon icon="heroicons:video-camera" className="w-6 h-6" />
-            </button>
-            <button className="p-3 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
-              <Icon icon="heroicons:computer-desktop" className="w-6 h-6" />
-            </button>
-            <button className="p-3 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
-              <Icon icon="heroicons:chat-bubble-left-right" className="w-6 h-6" />
-            </button>
-            <button className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors">
-              <Icon icon="heroicons:phone-x-mark" className="w-6 h-6" />
-            </button>
           </div>
         </div>
       </main>
@@ -94,4 +186,4 @@ const MeetingPage = () => {
   );
 };
 
-export default MeetingPage;
+export default CreateMeetingPage;

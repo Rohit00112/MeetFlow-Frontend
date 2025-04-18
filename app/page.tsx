@@ -10,6 +10,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import meetingService from "@/services/MeetingService";
 
 interface ImageProps {
   src: StaticImageData;
@@ -182,14 +183,19 @@ const SimpleDropdown = ({
     <div
       className={`absolute top-full left-0 mt-1 bg-white rounded-md shadow-lg py-1 w-64 border border-gray-200 z-50 transition-all duration-200 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
     >
-      <button className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option">
+      <Link href="/meeting" className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option">
         <Icon icon="material-symbols:link-rounded" width="20" height="20" />
-        <span>Create a meeting for later</span>
-      </button>
+        <span>Create a meeting with settings</span>
+      </Link>
       <button
         className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option"
         onClick={() => {
-          window.location.href = "/meeting";
+          if (user) {
+            // Create an instant meeting with default settings
+            const meeting = meetingService.createMeeting(user.id, user.name);
+            // Navigate to the meeting
+            window.location.href = `/meeting/${meeting.id}`;
+          }
         }}
       >
         <Icon icon="ic:baseline-plus" width="20" height="20" />
@@ -298,16 +304,15 @@ export default function Home() {
                 />
               </div>
               <div className="mt-3">
-                <Link href="/join" legacyBehavior>
-                  <a
-                    className={`text-blue-600 ${
-                      !inputValue
-                        ? "pointer-events-none text-gray-600 opacity-50"
-                        : "hover:underline"
-                    }`}
-                  >
-                    Join
-                  </a>
+                <Link
+                  href={inputValue ? `/join?code=${inputValue}` : "/join"}
+                  className={`text-blue-600 ${
+                    !inputValue
+                      ? "pointer-events-none text-gray-600 opacity-50"
+                      : "hover:underline"
+                  }`}
+                >
+                  Join
                 </Link>
               </div>
             </div>
