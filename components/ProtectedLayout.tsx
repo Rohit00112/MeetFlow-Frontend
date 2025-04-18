@@ -28,7 +28,13 @@ export default function ProtectedLayout({
 
     // If not loading and no user, redirect to login
     if (!loading && !user && isClient) {
-      router.push("/auth/login");
+      console.log('No authenticated user found, redirecting to login');
+      // Use a slight delay to prevent redirect loops
+      const redirectTimer = setTimeout(() => {
+        router.push("/auth/login");
+      }, 100);
+
+      return () => clearTimeout(redirectTimer);
     }
   }, [user, loading, router, pathname, isClient]);
 
@@ -36,35 +42,54 @@ export default function ProtectedLayout({
   useEffect(() => {
     if (!isClient || !user) return;
 
-    // Check token every minute
-    const checkTokenInterval = setInterval(() => {
+    // Initial check
+    const checkTokenExpiration = () => {
       const token = localStorage.getItem('token');
       if (!token) {
-        clearInterval(checkTokenInterval);
-        return;
+        console.warn('Token not found during expiration check');
+        return false;
       }
 
       // Simple check if token is valid JWT format
       const tokenParts = token.split('.');
       if (tokenParts.length !== 3) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        router.push('/auth/login');
-        clearInterval(checkTokenInterval);
-        return;
+        console.warn('Invalid token format during expiration check');
+        return false;
       }
 
       try {
         // Check if token is expired
         const payload = JSON.parse(atob(tokenParts[1]));
         if (payload.exp && payload.exp * 1000 < Date.now()) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          router.push('/auth/login');
-          clearInterval(checkTokenInterval);
+          console.warn('Token expired during expiration check');
+          return false;
         }
+        return true; // Token is valid
       } catch (error) {
         console.error('Error checking token expiration:', error);
+        return false;
+      }
+    };
+
+    // Perform initial check
+    if (!checkTokenExpiration()) {
+      console.log('Token invalid or expired, clearing auth state');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Use a slight delay to prevent redirect loops
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 100);
+      return; // Don't set up interval if initial check fails
+    }
+
+    // Check token every minute
+    const checkTokenInterval = setInterval(() => {
+      if (!checkTokenExpiration()) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/auth/login');
+        clearInterval(checkTokenInterval);
       }
     }, 60000); // Check every minute
 

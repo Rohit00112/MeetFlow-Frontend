@@ -66,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = localStorage.getItem('user');
 
         if (!token || !storedUser) {
+          console.log('No token or stored user found');
           clearAuthState();
           setLoading(false);
           return;
@@ -75,6 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
+          console.log('Restored user from localStorage:', parsedUser.name);
         } catch (e) {
           console.error('Failed to parse stored user data:', e);
           clearAuthState();
@@ -82,23 +84,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
+        // Don't wait for the server validation to complete before setting loading to false
+        // This allows the UI to render with the stored user data while we validate in the background
+        setLoading(false);
+
         try {
           // Validate token with server using the authenticated request utility
+          console.log('Validating token with server...');
           const data = await authenticatedRequest('/auth/me');
 
           // Update user data from server
+          console.log('Token validated successfully, updating user data');
           setUser(data.user);
           localStorage.setItem('user', JSON.stringify(data.user));
         } catch (error) {
           // If token is invalid, clear auth state
           console.error('Token validation failed:', error);
           clearAuthState();
+          // Don't set loading to false here, as we already did it above
         }
       } catch (error) {
         console.error('Failed to restore authentication state:', error);
         // Clear invalid auth state
         clearAuthState();
-      } finally {
         setLoading(false);
       }
     };

@@ -115,11 +115,12 @@ export async function authenticatedRequest<T = any>(
          error.message.includes('jwt expired'))) {
       // Clear the invalid token
       if (typeof window !== 'undefined') {
+        console.warn('Token validation failed, clearing auth state:', error.message);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
 
-        // Redirect to login page
-        window.location.href = '/auth/login';
+        // Don't redirect automatically - let the ProtectedLayout handle it
+        // This prevents redirect loops and allows for better error handling
       }
     }
 

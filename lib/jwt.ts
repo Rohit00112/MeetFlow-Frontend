@@ -12,8 +12,20 @@ export function signJWT(payload: any, options?: jwt.SignOptions): string {
 
 export function verifyJWT<T>(token: string): T | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as T;
+    // Add more detailed logging for debugging
+    const decoded = jwt.verify(token, JWT_SECRET) as T;
+    return decoded;
   } catch (error) {
+    // Log the specific error for debugging
+    if (error instanceof jwt.JsonWebTokenError) {
+      console.error('JWT Error:', error.message);
+    } else if (error instanceof jwt.TokenExpiredError) {
+      console.error('JWT Expired:', error.message, error.expiredAt);
+    } else if (error instanceof jwt.NotBeforeError) {
+      console.error('JWT Not Before:', error.message, error.date);
+    } else {
+      console.error('Unknown JWT Error:', error);
+    }
     return null;
   }
 }
