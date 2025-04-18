@@ -96,7 +96,22 @@ export default function ProfilePage() {
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      const file = e.target.files[0];
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setSaveError('Please select an image file');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveError('Image size should be less than 5MB');
+        return;
+      }
+
+      setProfileImage(file);
+      setSaveError(null);
     }
   };
 
@@ -164,18 +179,19 @@ export default function ProfilePage() {
       // Update profile using Redux
       const resultAction = await dispatch(updateProfileAction({ name, email, profileImage: imageBase64 }));
 
-      if (!updateProfileAction.fulfilled.match(resultAction)) {
-        throw new Error(resultAction.payload as string);
+      if (updateProfileAction.fulfilled.match(resultAction)) {
+        // Show success message
+        setSaveSuccess(true);
+
+        // Exit edit mode after a short delay
+        setTimeout(() => {
+          setIsEditing(false);
+          setSaveSuccess(false);
+        }, 2000);
+      } else if (updateProfileAction.rejected.match(resultAction)) {
+        // Handle the rejected action
+        setSaveError(resultAction.payload as string || "Failed to update profile");
       }
-
-      // Show success message
-      setSaveSuccess(true);
-
-      // Exit edit mode after a short delay
-      setTimeout(() => {
-        setIsEditing(false);
-        setSaveSuccess(false);
-      }, 2000);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Failed to update profile. Please try again.");
       console.error("Profile update failed:", error);

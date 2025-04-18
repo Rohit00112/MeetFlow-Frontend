@@ -27,15 +27,20 @@ export class MockPrismaClient {
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
-      update: async ({ data }: any) => ({
-        id: '1',
-        name: data.name || 'Test User',
-        email: data.email || 'test@example.com',
-        password: '$2a$10$GQH.xZm5FVH7JMfFGCU4WuQD3d5SZB.xQYS.mG/IdJDdFqS5Jvy8K',
-        avatar: data.avatar || 'https://ui-avatars.com/api/?name=Test+User&background=4285F4&color=fff&size=200',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
+      update: async ({ where, data }: any) => {
+        console.log('Mock Prisma update called with:', { where, data });
+
+        // For testing purposes, simulate a successful update
+        return {
+          id: where?.id || '1',
+          name: data.name || 'Test User',
+          email: data.email || 'test@example.com',
+          password: data.password || '$2a$10$GQH.xZm5FVH7JMfFGCU4WuQD3d5SZB.xQYS.mG/IdJDdFqS5Jvy8K',
+          avatar: data.avatar || 'https://ui-avatars.com/api/?name=Test+User&background=4285F4&color=fff&size=200',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      },
     };
 
     this.meeting = {

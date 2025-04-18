@@ -10,10 +10,11 @@ interface JWTPayload {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('Change password API called');
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -23,10 +24,10 @@ export async function POST(request: NextRequest) {
 
     // Extract token
     const token = authHeader.split(' ')[1];
-    
+
     // Verify token
     const payload = verifyJWT<JWTPayload>(token);
-    
+
     if (!payload) {
       return NextResponse.json(
         { error: 'Invalid token' },
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Verify current password
     const isPasswordValid = await comparePassword(currentPassword, user.password);
-    
+
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: 'Current password is incorrect' },

@@ -65,6 +65,9 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
         setTimeout(() => {
           onClose();
         }, 2000);
+      } else if (changePasswordAction.rejected.match(resultAction)) {
+        // Handle the rejected action
+        setError(resultAction.payload as string || "Failed to change password");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change password");
