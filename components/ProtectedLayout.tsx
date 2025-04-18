@@ -10,7 +10,7 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUserData } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
@@ -31,6 +31,59 @@ export default function ProtectedLayout({
       router.push("/auth/login");
     }
   }, [user, loading, router, pathname, isClient]);
+
+  // Check token expiration periodically
+  useEffect(() => {
+    if (!isClient || !user) return;
+
+    // Check token every minute
+    const checkTokenInterval = setInterval(() => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        clearInterval(checkTokenInterval);
+        return;
+      }
+
+      // Simple check if token is valid JWT format
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/auth/login');
+        clearInterval(checkTokenInterval);
+        return;
+      }
+
+      try {
+        // Check if token is expired
+        const payload = JSON.parse(atob(tokenParts[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/auth/login');
+          clearInterval(checkTokenInterval);
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkTokenInterval);
+  }, [isClient, user, router]);
+
+  // Refresh user data periodically
+  useEffect(() => {
+    if (!isClient || !user) return;
+
+    // Refresh user data every 5 minutes
+    const refreshInterval = setInterval(() => {
+      refreshUserData().catch(error => {
+        console.error('Error refreshing user data:', error);
+      });
+    }, 300000); // Every 5 minutes
+
+    return () => clearInterval(refreshInterval);
+  }, [isClient, user, refreshUserData]);
 
   // Don't render anything on the server for protected routes
   if (!isClient) {

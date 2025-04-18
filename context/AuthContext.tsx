@@ -23,6 +23,7 @@ interface AuthContextType {
   resetPassword: (token: string, password: string) => Promise<boolean>;
   updateProfile: (name: string, email: string, profileImage?: string | null) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  refreshUserData: () => Promise<boolean>;
 }
 
 // Create the AuthContext
@@ -39,6 +40,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     setUser(null);
+  };
+
+  // Refresh user data
+  const refreshUserData = async (): Promise<boolean> => {
+    try {
+      const token = getAuthToken();
+      if (!token) return false;
+
+      const data = await authenticatedRequest('/auth/me');
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      return true;
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      return false;
+    }
   };
 
   // Check if user is already logged in
@@ -335,7 +352,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     forgotPassword,
     resetPassword,
     updateProfile,
-    changePassword
+    changePassword,
+    refreshUserData
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -102,8 +102,27 @@ export async function authenticatedRequest<T = any>(
     throw new Error('No authentication token found');
   }
 
-  return apiRequest<T>(endpoint, {
-    ...options,
-    token,
-  });
+  try {
+    return await apiRequest<T>(endpoint, {
+      ...options,
+      token,
+    });
+  } catch (error) {
+    // Handle token expiration
+    if (error instanceof Error &&
+        (error.message.includes('Authentication failed') ||
+         error.message.includes('invalid token') ||
+         error.message.includes('jwt expired'))) {
+      // Clear the invalid token
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Redirect to login page
+        window.location.href = '/auth/login';
+      }
+    }
+
+    throw error;
+  }
 }
