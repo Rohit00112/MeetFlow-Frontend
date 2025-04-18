@@ -23,14 +23,26 @@ const getInitials = (name: string) => {
 const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, size?: number }) => {
   if (src) {
     return (
-      <div className="relative" style={{ width: size, height: size }}>
-        <Image
-          src={src}
-          alt={name || 'Avatar'}
-          width={size}
-          height={size}
-          className="rounded-full object-cover"
-        />
+      <div
+        className="relative overflow-hidden rounded-full"
+        style={{ width: size, height: size }}
+      >
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <Image
+            src={src}
+            alt={name || 'Avatar'}
+            width={size}
+            height={size}
+            className="rounded-full object-cover w-full h-full ring-4 ring-white shadow-lg"
+            style={{ objectFit: 'cover' }}
+            onError={(e) => {
+              // If image fails to load, show initials instead
+              console.error('Image failed to load:', src);
+              e.currentTarget.style.display = 'none';
+              // The parent div will show the initials fallback
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -41,7 +53,7 @@ const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, s
 
   return (
     <div
-      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium`}
+      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium ring-4 ring-white shadow-lg`}
       style={{ width: size, height: size, fontSize: size / 2.5 }}
     >
       {initials}
@@ -77,7 +89,23 @@ export default function RegisterPage() {
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      const file = e.target.files[0];
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setFormError('Please select a valid image file (JPG, PNG, GIF, or WebP)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError('Image size should be less than 5MB');
+        return;
+      }
+
+      setProfileImage(file);
+      setFormError(null);
     }
   };
 
@@ -108,18 +136,32 @@ export default function RegisterPage() {
       // Convert image to base64 if it exists
       let imageBase64 = null;
       if (profileImage) {
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(profileImage);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = error => reject(error);
-        });
+        try {
+          console.log('Converting profile image to base64');
+          imageBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(profileImage);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+          });
+          console.log('Profile image converted to base64 successfully');
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          setFormError('Failed to process the image. Please try again with a different image.');
+          return;
+        }
       }
 
+      console.log('Dispatching register action');
       const resultAction = await dispatch(registerAction({ name, email, password, profileImage: imageBase64 }));
 
       if (registerAction.fulfilled.match(resultAction)) {
+        console.log('Registration successful, redirecting to home page');
         router.push("/"); // Redirect to home page after successful registration
+      } else if (registerAction.rejected.match(resultAction)) {
+        // Handle the rejected action
+        console.error('Registration failed:', resultAction.payload);
+        setFormError(resultAction.payload as string || "Registration failed");
       }
     } catch (error) {
       console.error("Registration failed:", error);

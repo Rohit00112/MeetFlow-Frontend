@@ -58,9 +58,17 @@ export const register = createAsyncThunk(
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
+      // Log the data being sent to the API
+      console.log('Sending registration data:', {
+        name,
+        email,
+        hasPassword: !!password,
+        profileImage: profileImage ? 'base64_image_data' : null
+      });
+
       const data = await apiRequest('/auth/register', {
         method: 'POST',
-        body: { name, email, password, avatar },
+        body: { name, email, password, profileImage },
       });
       return data;
     } catch (error) {

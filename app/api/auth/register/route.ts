@@ -4,9 +4,11 @@ import { hashPassword } from '@/lib/password';
 import { signJWT } from '@/lib/jwt';
 
 export async function POST(request: NextRequest) {
+  console.log('Register API called');
   try {
     const body = await request.json();
-    const { name, email, password, avatar } = body;
+    const { name, email, password, profileImage } = body;
+    console.log('Registration request received:', { name, email, hasPassword: !!password, hasProfileImage: !!profileImage });
 
     // Validate input
     if (!name || !email || !password) {
@@ -28,8 +30,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Process profile image if provided
+    let avatarUrl = undefined;
+    if (profileImage && typeof profileImage === 'string' && profileImage.startsWith('data:image')) {
+      console.log('Processing profile image for registration');
+      // In a real implementation, you would upload this to a storage service
+      // For now, we'll just use the base64 string
+      avatarUrl = profileImage;
+      console.log('Profile image processed successfully for registration');
+    } else if (!profileImage) {
+      // If no profile image was uploaded, use UI Avatars API to generate one based on initials
+      avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
+      console.log('Generated avatar URL from initials');
+    }
+
     // Hash password
     const hashedPassword = await hashPassword(password);
+    console.log('Password hashed successfully');
 
     // Create user
     const user = await prisma.user.create({
@@ -37,9 +54,11 @@ export async function POST(request: NextRequest) {
         name,
         email,
         password: hashedPassword,
-        avatar,
+        avatar: avatarUrl,
       },
     });
+
+    console.log('User created successfully with ID:', user.id);
 
     // Generate JWT token
     const token = signJWT({

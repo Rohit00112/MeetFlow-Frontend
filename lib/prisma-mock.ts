@@ -21,12 +21,34 @@ export class MockPrismaClient {
         return null;
       },
       findFirst: async () => null,
-      create: async ({ data }: any) => ({
-        id: '2',
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
+      create: async ({ data }: any) => {
+        console.log('Mock Prisma create user called with:', {
+          name: data.name,
+          email: data.email,
+          hasPassword: !!data.password,
+          hasAvatar: !!data.avatar
+        });
+
+        // Generate a unique ID
+        const userId = `user_${Date.now()}`;
+
+        // Create a new user object
+        const newUser = {
+          id: userId,
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        console.log('Mock Prisma created user:', {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          hasAvatar: !!newUser.avatar
+        });
+
+        return newUser;
+      },
       update: async ({ where, data }: any) => {
         console.log('Mock Prisma update called with:', {
           where,
