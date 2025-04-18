@@ -22,6 +22,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<boolean>;
   updateProfile: (name: string, email: string, profileImage?: string | null) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
 // Create the AuthContext
@@ -270,6 +271,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Change password function
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Validate input
+      if (!currentPassword || !newPassword) {
+        throw new Error('Current password and new password are required');
+      }
+
+      if (newPassword.length < 6) {
+        throw new Error('New password must be at least 6 characters');
+      }
+
+      // Use the authenticated API utility to make the request
+      await authenticatedRequest('/auth/change-password', {
+        method: 'POST',
+        body: { currentPassword, newPassword },
+      });
+
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -279,7 +310,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     forgotPassword,
     resetPassword,
-    updateProfile
+    updateProfile,
+    changePassword
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

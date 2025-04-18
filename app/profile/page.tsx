@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -57,6 +58,10 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect if not logged in
@@ -100,10 +105,47 @@ export default function ProfilePage() {
     }
   };
 
+  const validateForm = (): boolean => {
+    // Reset errors
+    setNameError(null);
+    setEmailError(null);
+    setSaveError(null);
+
+    let isValid = true;
+
+    // Validate name
+    if (!name.trim()) {
+      setNameError('Name is required');
+      isValid = false;
+    } else if (name.trim().length < 2) {
+      setNameError('Name must be at least 2 characters');
+      isValid = false;
+    }
+
+    // Validate email
+    if (!email.trim()) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address');
+      isValid = false;
+    }
+
+    return isValid;
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Reset success state
+    setSaveSuccess(false);
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
     setSaveLoading(true);
-    setSaveError(null);
 
     try {
       // Convert image to base64 if it exists
@@ -120,8 +162,14 @@ export default function ProfilePage() {
       // Update profile using the AuthContext function
       await updateProfile(name, email, imageBase64);
 
-      // Success - exit edit mode
-      setIsEditing(false);
+      // Show success message
+      setSaveSuccess(true);
+
+      // Exit edit mode after a short delay
+      setTimeout(() => {
+        setIsEditing(false);
+        setSaveSuccess(false);
+      }, 2000);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Failed to update profile. Please try again.");
       console.error("Profile update failed:", error);
@@ -225,6 +273,19 @@ export default function ProfilePage() {
                   </div>
                 )}
 
+                {saveSuccess && (
+                  <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-md shadow-sm">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <Icon icon="heroicons:check-circle" className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-green-700">Profile updated successfully!</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {isEditing && (
                   <div className="flex flex-col items-center mb-8">
                     <input
@@ -256,9 +317,15 @@ export default function ProfilePage() {
                           id="name"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${nameError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
                           placeholder="Your full name"
                         />
+                        {nameError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {nameError}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -274,9 +341,15 @@ export default function ProfilePage() {
                           id="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${emailError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
                           placeholder="Your email address"
                         />
+                        {emailError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {emailError}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -327,13 +400,13 @@ export default function ProfilePage() {
                   </div>
                   <dd className="text-sm text-gray-900 flex items-center justify-end">
                     <span className="mr-3">••••••••</span>
-                    <Link
-                      href="/auth/forgot-password"
+                    <button
+                      onClick={() => setIsChangePasswordModalOpen(true)}
                       className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group transition-all duration-200"
                     >
                       <span>Change</span>
                       <Icon icon="heroicons:arrow-right" className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
-                    </Link>
+                    </button>
                   </dd>
                 </div>
                 <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100">
@@ -395,6 +468,12 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }
