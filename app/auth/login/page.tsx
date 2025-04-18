@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { login as loginAction } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,7 +13,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
 
   const [formError, setFormError] = useState<string | null>(null);
@@ -33,11 +35,16 @@ export default function LoginPage() {
     }
 
     try {
-      await login(email, password);
-      router.push("/"); // Redirect to home page after successful login
+      const resultAction = await dispatch(loginAction({ email, password }));
+
+      if (loginAction.fulfilled.match(resultAction)) {
+        router.push("/"); // Redirect to home page after successful login
+      } else if (loginAction.rejected.match(resultAction)) {
+        console.error("Login failed:", resultAction.payload);
+        // The error is already set in the Redux state
+      }
     } catch (error) {
       console.error("Login failed:", error);
-      // The error from the API is already set in the AuthContext
     }
   };
 
