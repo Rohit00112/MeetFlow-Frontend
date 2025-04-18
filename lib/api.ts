@@ -55,21 +55,36 @@ export async function apiRequest<T = any>(
   const response = await fetch(`${API_URL}${endpoint}`, requestOptions);
 
   // Parse the response
-  const data = await response.json();
+  let data;
+  try {
+    // Check if the response is JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      // If not JSON, get the text and create an error object
+      const text = await response.text();
+      console.error('Received non-JSON response:', text.substring(0, 200) + '...');
+      data = { error: 'Received non-JSON response from server' };
+    }
+  } catch (error) {
+    console.error('Error parsing response:', error);
+    throw new Error('Failed to parse server response. Please try again later.');
+  }
 
   // Handle error responses
   if (!response.ok) {
     // Create a more descriptive error message based on status code
-    let errorMessage = data.error || 'Something went wrong';
+    let errorMessage = data?.error || 'Something went wrong';
 
     if (response.status === 401) {
-      errorMessage = data.error || 'Authentication failed. Please check your credentials.';
+      errorMessage = data?.error || 'Authentication failed. Please check your credentials.';
     } else if (response.status === 403) {
-      errorMessage = data.error || 'You do not have permission to access this resource.';
+      errorMessage = data?.error || 'You do not have permission to access this resource.';
     } else if (response.status === 404) {
-      errorMessage = data.error || 'The requested resource was not found.';
+      errorMessage = data?.error || 'The requested resource was not found.';
     } else if (response.status === 500) {
-      errorMessage = data.error || 'A server error occurred. Please try again later.';
+      errorMessage = data?.error || 'A server error occurred. Please try again later.';
     }
 
     throw new Error(errorMessage);
