@@ -19,18 +19,95 @@ const getInitials = (name: string) => {
     .substring(0, 2);
 };
 
+// Helper function to compress images before upload
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    // Create a new image object
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+
+    img.onload = () => {
+      // Create a canvas element
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      // Calculate new dimensions (max 800px width/height while maintaining aspect ratio)
+      let width = img.width;
+      let height = img.height;
+      const maxSize = 800;
+
+      if (width > height && width > maxSize) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      } else if (height > maxSize) {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw image on canvas with new dimensions
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert canvas to blob
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas to Blob conversion failed'));
+            return;
+          }
+
+          // Create a new file from the blob
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+
+          console.log(`Original size: ${file.size / 1024}KB, Compressed size: ${compressedFile.size / 1024}KB`);
+          resolve(compressedFile);
+        },
+        'image/jpeg',
+        0.7 // Quality (0.7 = 70% quality)
+      );
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+  });
+};
+
 // Avatar component that shows image or initials
 const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null, name: string, size?: number, className?: string }) => {
   if (src) {
     return (
-      <div className={`relative ${className}`} style={{ width: size, height: size }}>
-        <Image
-          src={src}
-          alt={name || 'Avatar'}
-          width={size}
-          height={size}
-          className="rounded-full object-cover ring-4 ring-white shadow-lg"
-        />
+      <div
+        className={`relative overflow-hidden rounded-full ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <Image
+            src={src}
+            alt={name || 'Avatar'}
+            width={size}
+            height={size}
+            className="rounded-full object-cover w-full h-full ring-4 ring-white shadow-lg"
+            style={{ objectFit: 'cover' }}
+            onError={(e) => {
+              // If image fails to load, show initials instead
+              console.error('Image failed to load:', src);
+              e.currentTarget.style.display = 'none';
+              // The parent div will show the initials fallback
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -99,8 +176,9 @@ export default function ProfilePage() {
       const file = e.target.files[0];
 
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setSaveError('Please select an image file');
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setSaveError('Please select a valid image file (JPG, PNG, GIF, or WebP)');
         return;
       }
 
@@ -110,8 +188,28 @@ export default function ProfilePage() {
         return;
       }
 
-      setProfileImage(file);
-      setSaveError(null);
+      // Create a new image to check dimensions
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      img.onload = () => {
+        // Check if image is too small
+        if (img.width < 100 || img.height < 100) {
+          setSaveError('Image is too small. Please use an image that is at least 100x100 pixels.');
+          URL.revokeObjectURL(img.src);
+          return;
+        }
+
+        // Set the profile image
+        setProfileImage(file);
+        setSaveError(null);
+        URL.revokeObjectURL(img.src);
+      };
+
+      img.onerror = () => {
+        setSaveError('Failed to load image. Please try another file.');
+        URL.revokeObjectURL(img.src);
+      };
     }
   };
 
@@ -168,12 +266,24 @@ export default function ProfilePage() {
       // Convert image to base64 if it exists
       let imageBase64 = null;
       if (profileImage) {
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(profileImage);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = error => reject(error);
-        });
+        try {
+          // Compress the image before converting to base64
+          const compressedImage = await compressImage(profileImage);
+
+          imageBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(compressedImage);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+          });
+
+          console.log('Image converted to base64 successfully');
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          setSaveError('Failed to process the image. Please try again with a different image.');
+          setSaveLoading(false);
+          return;
+        }
       }
 
       // Update profile using Redux
@@ -314,14 +424,30 @@ export default function ProfilePage() {
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
-                      accept="image/*"
+                      accept="image/jpeg, image/png, image/gif, image/webp"
                       className="hidden"
                       id="profile-image"
                     />
-                    <p className="text-sm text-blue-600 mt-1 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center">
-                      <Icon icon="heroicons:camera" className="h-4 w-4 mr-2" />
-                      {profileImage ? profileImage.name : "Click avatar to change profile picture"}
-                    </p>
+                    <div className="flex flex-col items-center">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-sm text-blue-600 mt-1 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center hover:bg-blue-100 transition-colors duration-200"
+                      >
+                        <Icon icon="heroicons:camera" className="h-4 w-4 mr-2" />
+                        {profileImage ? 'Change image' : "Upload profile picture"}
+                      </button>
+                      {profileImage && (
+                        <div className="mt-2 text-xs text-gray-500 flex items-center">
+                          <Icon icon="heroicons:document" className="h-3 w-3 mr-1" />
+                          {profileImage.name.length > 25 ? profileImage.name.substring(0, 22) + '...' : profileImage.name}
+                          ({(profileImage.size / 1024).toFixed(1)}KB)
+                        </div>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        Recommended: Square image, max 5MB (JPG, PNG, GIF)
+                      </p>
+                    </div>
                   </div>
                 )}
 

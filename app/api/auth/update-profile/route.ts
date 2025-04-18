@@ -36,7 +36,8 @@ export async function PUT(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { name, email, avatar } = body;
+    const { name, email, profileImage } = body;
+    console.log('Profile update request received:', { name, email, hasImage: !!profileImage });
 
     // Validate input
     if (!name || !email) {
@@ -60,15 +61,26 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Process profile image if provided
+    let avatarUrl = undefined;
+    if (profileImage && profileImage.startsWith('data:image')) {
+      console.log('Processing profile image');
+      // In a real implementation, you would upload this to a storage service
+      // For now, we'll just use the base64 string
+      avatarUrl = profileImage;
+    }
+
     // Update user
     const updatedUser = await prisma.user.update({
       where: { id: payload.id },
       data: {
         name,
         email,
-        ...(avatar && { avatar }),
+        ...(avatarUrl && { avatar: avatarUrl }),
       },
     });
+
+    console.log('User profile updated successfully');
 
     // Return updated user data (excluding password)
     return NextResponse.json({
