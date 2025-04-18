@@ -15,13 +15,29 @@ export default function LoginPage() {
   const { login, loading, error } = useAuth();
   const router = useRouter();
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    // Validate form
+    if (!email.trim()) {
+      setFormError("Email is required");
+      return;
+    }
+
+    if (!password) {
+      setFormError("Password is required");
+      return;
+    }
+
     try {
       await login(email, password);
       router.push("/"); // Redirect to home page after successful login
     } catch (error) {
       console.error("Login failed:", error);
+      // The error from the API is already set in the AuthContext
     }
   };
 
@@ -52,14 +68,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {error && (
+        {(error || formError) && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
             <div className="flex">
               <div className="flex-shrink-0">
                 <Icon icon="heroicons:exclamation-circle" className="h-5 w-5 text-red-500" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700">{formError || error}</p>
               </div>
             </div>
           </div>
@@ -75,10 +91,15 @@ export default function LoginPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
+                  className={`appearance-none relative block w-full px-3 py-3 border ${formError && formError.includes('Email') ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base`}
                   placeholder="Email address"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (formError && formError.includes('Email')) {
+                      setFormError(null);
+                    }
+                  }}
                 />
               </div>
               <div className="relative">
@@ -88,10 +109,15 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
-                  className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
+                  className={`appearance-none relative block w-full px-3 py-3 border ${formError && formError.includes('Password') || error && error.includes('password') ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base`}
                   placeholder="Password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (formError && formError.includes('Password')) {
+                      setFormError(null);
+                    }
+                  }}
                 />
                 <button
                   type="button"

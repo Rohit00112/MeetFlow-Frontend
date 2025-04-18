@@ -86,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
+      // Validate input
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
+
       // Use the API utility to make the request
       const data = await apiRequest('/auth/login', {
         method: 'POST',
@@ -100,7 +105,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(data.user);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      // Handle specific error messages from the API
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid email or password')) {
+          setError('Invalid email or password. Please check your credentials and try again.');
+        } else {
+          setError(error.message);
+        }
+      } else {
+        setError('An unknown error occurred');
+      }
+      throw error; // Re-throw the error so the login page can handle it
     } finally {
       setLoading(false);
     }
