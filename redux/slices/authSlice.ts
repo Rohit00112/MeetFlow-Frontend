@@ -178,6 +178,7 @@ const authSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+      console.log('Cleared auth error state');
     },
   },
   extraReducers: (builder) => {

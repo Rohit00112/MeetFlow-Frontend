@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
-import { login as loginAction } from "@/redux/slices/authSlice";
+import { login as loginAction, clearError } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,6 +18,11 @@ export default function LoginPage() {
   const router = useRouter();
 
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Clear any existing errors when the component mounts
+  useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

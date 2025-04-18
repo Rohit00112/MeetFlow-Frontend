@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
-import { fetchUserProfile } from "@/redux/slices/authSlice";
+import { fetchUserProfile, clearError } from "@/redux/slices/authSlice";
 
 export default function ReduxProtectedLayout({
   children,
@@ -39,11 +39,13 @@ export default function ReduxProtectedLayout({
     // If not loading and not authenticated, redirect to login
     if (!loading && !isAuthenticated && isClient) {
       console.log('No authenticated user found, redirecting to login');
+      // Clear any errors before redirecting
+      dispatch(clearError());
       // Use a slight delay to prevent redirect loops
       const redirectTimer = setTimeout(() => {
         router.push("/auth/login");
       }, 100);
-      
+
       return () => clearTimeout(redirectTimer);
     }
   }, [isAuthenticated, loading, router, pathname, isClient]);
