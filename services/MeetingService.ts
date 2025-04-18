@@ -32,7 +32,7 @@ export interface MeetingSettings {
 const generateMeetingId = (): string => {
   // Generate a 3-part code like "abc-defg-hij"
   const characters = 'abcdefghijklmnopqrstuvwxyz';
-  
+
   const generatePart = (length: number) => {
     let result = '';
     for (let i = 0; i < length; i++) {
@@ -40,7 +40,7 @@ const generateMeetingId = (): string => {
     }
     return result;
   };
-  
+
   return `${generatePart(3)}-${generatePart(4)}-${generatePart(3)}`;
 };
 
@@ -52,7 +52,7 @@ class MeetingService {
   // Create a new meeting
   createMeeting(hostId: string, hostName: string, settings?: Partial<MeetingSettings>): Meeting {
     const meetingId = generateMeetingId();
-    
+
     const defaultSettings: MeetingSettings = {
       allowScreenSharing: true,
       allowChat: true,
@@ -60,7 +60,7 @@ class MeetingService {
       allowParticipantsToUnmute: true,
       allowRecording: false,
     };
-    
+
     const newMeeting: Meeting = {
       id: meetingId,
       hostId,
@@ -79,31 +79,31 @@ class MeetingService {
       isActive: true,
       settings: { ...defaultSettings, ...settings },
     };
-    
+
     meetings.push(newMeeting);
-    
+
     // In a real app, we would save this to a database
     this.saveMeetingsToLocalStorage();
-    
+
     return newMeeting;
   }
-  
+
   // Get a meeting by ID
   getMeeting(meetingId: string): Meeting | undefined {
     return meetings.find(meeting => meeting.id === meetingId);
   }
-  
+
   // Join a meeting
   joinMeeting(meetingId: string, participantId: string, participantName: string): Meeting | null {
     const meeting = this.getMeeting(meetingId);
-    
+
     if (!meeting || !meeting.isActive) {
       return null;
     }
-    
+
     // Check if participant is already in the meeting
     const existingParticipant = meeting.participants.find(p => p.id === participantId);
-    
+
     if (existingParticipant) {
       // Update join time if rejoining
       existingParticipant.joinTime = new Date();
@@ -118,111 +118,111 @@ class MeetingService {
         joinTime: new Date(),
       });
     }
-    
+
     this.saveMeetingsToLocalStorage();
-    
+
     return meeting;
   }
-  
+
   // Leave a meeting
   leaveMeeting(meetingId: string, participantId: string): boolean {
     const meeting = this.getMeeting(meetingId);
-    
+
     if (!meeting) {
       return false;
     }
-    
+
     // If the host leaves, end the meeting
     const participant = meeting.participants.find(p => p.id === participantId);
-    
+
     if (participant?.isHost) {
       return this.endMeeting(meetingId);
     }
-    
+
     // Otherwise, remove the participant
     meeting.participants = meeting.participants.filter(p => p.id !== participantId);
-    
+
     this.saveMeetingsToLocalStorage();
-    
+
     return true;
   }
-  
+
   // End a meeting
   endMeeting(meetingId: string): boolean {
     const meeting = this.getMeeting(meetingId);
-    
+
     if (!meeting) {
       return false;
     }
-    
+
     meeting.isActive = false;
-    
+
     this.saveMeetingsToLocalStorage();
-    
+
     return true;
   }
-  
+
   // Toggle participant's mute status
   toggleMute(meetingId: string, participantId: string): boolean {
     const meeting = this.getMeeting(meetingId);
-    
+
     if (!meeting) {
       return false;
     }
-    
+
     const participant = meeting.participants.find(p => p.id === participantId);
-    
+
     if (!participant) {
       return false;
     }
-    
+
     participant.isMuted = !participant.isMuted;
-    
+
     this.saveMeetingsToLocalStorage();
-    
+
     return true;
   }
-  
+
   // Toggle participant's video status
   toggleVideo(meetingId: string, participantId: string): boolean {
     const meeting = this.getMeeting(meetingId);
-    
+
     if (!meeting) {
       return false;
     }
-    
+
     const participant = meeting.participants.find(p => p.id === participantId);
-    
+
     if (!participant) {
       return false;
     }
-    
+
     participant.isVideoOn = !participant.isVideoOn;
-    
+
     this.saveMeetingsToLocalStorage();
-    
+
     return true;
   }
-  
+
   // Get all active meetings
   getActiveMeetings(): Meeting[] {
     return meetings.filter(meeting => meeting.isActive);
   }
-  
+
   // Get meetings hosted by a user
   getUserMeetings(userId: string): Meeting[] {
     return meetings.filter(meeting => meeting.hostId === userId);
   }
-  
+
   // Load meetings from localStorage (for persistence between page refreshes)
   loadMeetingsFromLocalStorage(): void {
     if (typeof window !== 'undefined') {
       const storedMeetings = localStorage.getItem('meetings');
-      
+
       if (storedMeetings) {
         try {
           const parsedMeetings = JSON.parse(storedMeetings);
-          
+
           // Convert string dates back to Date objects
           parsedMeetings.forEach((meeting: any) => {
             meeting.startTime = new Date(meeting.startTime);
@@ -230,24 +230,49 @@ class MeetingService {
               participant.joinTime = new Date(participant.joinTime);
             });
           });
-          
+
           meetings = parsedMeetings;
+
+          // Clean up any meetings that might be in an inconsistent state
+          this.cleanupMeetings();
         } catch (error) {
           console.error('Error parsing meetings from localStorage:', error);
+          // Reset meetings if there's an error
+          meetings = [];
+          localStorage.removeItem('meetings');
         }
       }
     }
   }
-  
+
+  // Clean up meetings that might be in an inconsistent state
+  cleanupMeetings(): void {
+    // Remove any meetings that don't have valid data
+    meetings = meetings.filter(meeting => {
+      return meeting && meeting.id && meeting.hostId && meeting.hostName &&
+             Array.isArray(meeting.participants) && meeting.participants.length > 0;
+    });
+
+    // Save the cleaned up meetings
+    this.saveMeetingsToLocalStorage();
+  }
+
   // Save meetings to localStorage
   saveMeetingsToLocalStorage(): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('meetings', JSON.stringify(meetings));
     }
   }
-  
+
   // Initialize the service
   initialize(): void {
+    // Clear any existing meetings for testing purposes
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('meetings');
+    }
+    meetings = [];
+
+    // Load meetings from localStorage
     this.loadMeetingsFromLocalStorage();
   }
 }

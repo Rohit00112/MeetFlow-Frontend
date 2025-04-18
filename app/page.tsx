@@ -191,10 +191,17 @@ const SimpleDropdown = ({
         className="w-full flex items-center gap-3 hover:bg-gray-100 px-4 py-3 text-sm text-gray-700 modal-option"
         onClick={() => {
           if (user) {
-            // Create an instant meeting with default settings
-            const meeting = meetingService.createMeeting(user.id, user.name);
-            // Navigate to the meeting
-            window.location.href = `/meeting/${meeting.id}`;
+            try {
+              console.log('Creating instant meeting for user:', user.name, 'with ID:', user.id);
+              // Create an instant meeting with default settings
+              const meeting = meetingService.createMeeting(user.id, user.name);
+              console.log('Meeting created:', meeting);
+              // Navigate to the meeting
+              window.location.href = `/meeting/${meeting.id}`;
+            } catch (error) {
+              console.error('Error creating instant meeting:', error);
+              alert('Failed to create meeting. Please try again.');
+            }
           }
         }}
       >

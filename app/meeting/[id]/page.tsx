@@ -14,7 +14,7 @@ const MeetingRoom = () => {
   const params = useParams();
   const router = useRouter();
   const meetingId = params?.id as string;
-  
+
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -22,56 +22,78 @@ const MeetingRoom = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [participantMenuOpen, setParticipantMenuOpen] = useState<string | null>(null);
-  
+
   // Load meeting data
   useEffect(() => {
     if (!meetingId || !user) return;
-    
+
     try {
-      const meetingData = meetingService.getMeeting(meetingId);
-      
+      console.log('Looking for meeting with ID:', meetingId);
+      const meetingData = meetingService.getMeeting(meetingId as string);
+      console.log('Meeting data found:', meetingData);
+
       if (!meetingData) {
+        console.error('Meeting not found with ID:', meetingId);
         setError("Meeting not found. The meeting may have ended or the code is incorrect.");
         return;
       }
-      
+
       if (!meetingData.isActive) {
+        console.error('Meeting is not active:', meetingId);
         setError("This meeting has ended.");
         return;
       }
-      
+
       // Join the meeting if not already joined
       const isParticipant = meetingData.participants.some(p => p.id === user.id);
-      
+      console.log('Is user already a participant?', isParticipant);
+
       if (!isParticipant) {
-        meetingService.joinMeeting(meetingId, user.id, user.name);
+        console.log('Joining meeting as:', user.name, 'with ID:', user.id);
+        const joinResult = meetingService.joinMeeting(meetingId as string, user.id, user.name);
+        console.log('Join result:', joinResult);
+
+        if (!joinResult) {
+          setError("Failed to join the meeting. Please try again.");
+          return;
+        }
       }
-      
-      setMeeting(meetingData);
-      
+
+      // Get the latest meeting data after joining
+      const updatedMeetingData = meetingService.getMeeting(meetingId as string);
+      if (!updatedMeetingData) {
+        setError("Meeting data could not be retrieved after joining.");
+        return;
+      }
+
+      setMeeting(updatedMeetingData);
+
       // Find user's participant data
-      const participantData = meetingData.participants.find(p => p.id === user.id);
+      const participantData = updatedMeetingData.participants.find(p => p.id === user.id);
       if (participantData) {
         setIsMuted(participantData.isMuted);
         setIsVideoOn(participantData.isVideoOn);
       }
-      
+
       // Set up interval to refresh meeting data
       const intervalId = setInterval(() => {
-        const updatedMeeting = meetingService.getMeeting(meetingId);
-        if (updatedMeeting && updatedMeeting.isActive) {
-          setMeeting(updatedMeeting);
-        } else if (updatedMeeting && !updatedMeeting.isActive) {
+        const refreshedMeeting = meetingService.getMeeting(meetingId as string);
+        if (refreshedMeeting && refreshedMeeting.isActive) {
+          setMeeting(refreshedMeeting);
+        } else if (refreshedMeeting && !refreshedMeeting.isActive) {
           setError("This meeting has ended.");
+          clearInterval(intervalId);
+        } else if (!refreshedMeeting) {
+          setError("Meeting no longer exists.");
           clearInterval(intervalId);
         }
       }, 5000);
-      
+
       return () => {
         clearInterval(intervalId);
         // Leave meeting when component unmounts
         if (user && meetingId) {
-          meetingService.leaveMeeting(meetingId, user.id);
+          meetingService.leaveMeeting(meetingId as string, user.id);
         }
       };
     } catch (error) {
@@ -79,37 +101,37 @@ const MeetingRoom = () => {
       setError("An error occurred while loading the meeting.");
     }
   }, [meetingId, user]);
-  
+
   const handleToggleMute = () => {
     if (!meeting || !user) return;
-    
+
     const success = meetingService.toggleMute(meetingId, user.id);
     if (success) {
       setIsMuted(!isMuted);
     }
   };
-  
+
   const handleToggleVideo = () => {
     if (!meeting || !user) return;
-    
+
     const success = meetingService.toggleVideo(meetingId, user.id);
     if (success) {
       setIsVideoOn(!isVideoOn);
     }
   };
-  
+
   const handleToggleScreenShare = () => {
     if (!meeting?.settings.allowScreenSharing) return;
-    
+
     setIsScreenSharing(!isScreenSharing);
   };
-  
+
   const handleEndMeeting = () => {
     if (!meeting || !user) return;
-    
+
     // Check if user is host
     const isHost = meeting.participants.some(p => p.id === user.id && p.isHost);
-    
+
     if (isHost) {
       // End meeting for everyone
       meetingService.endMeeting(meetingId);
@@ -117,27 +139,27 @@ const MeetingRoom = () => {
       // Leave meeting
       meetingService.leaveMeeting(meetingId, user.id);
     }
-    
+
     // Redirect to home
     router.push("/");
   };
-  
+
   const handleCopyMeetingLink = () => {
     if (!meetingId) return;
-    
+
     const meetingLink = `${window.location.origin}/join?code=${meetingId}`;
     navigator.clipboard.writeText(meetingLink);
-    
+
     // Show toast or notification (simplified for now)
     alert("Meeting link copied to clipboard!");
   };
-  
+
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-  
+
   const isUserHost = meeting?.participants.some(p => p.id === user?.id && p.isHost);
-  
+
   if (error) {
     return (
       <>
@@ -156,7 +178,7 @@ const MeetingRoom = () => {
       </>
     );
   }
-  
+
   return (
     <ProtectedRoute>
       <Navbar />
@@ -165,14 +187,14 @@ const MeetingRoom = () => {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold">Meeting: {meetingId}</h1>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={handleCopyMeetingLink}
                 className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
               >
                 <Icon icon="heroicons:link" className="w-5 h-5" />
                 Copy Link
               </button>
-              <button 
+              <button
                 onClick={handleEndMeeting}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
               >
@@ -192,7 +214,7 @@ const MeetingRoom = () => {
                 <div className="text-center text-white">
                   <Icon icon="heroicons:video-camera-slash" className="w-16 h-16 mx-auto mb-4" />
                   <p className="text-xl">Your camera is off</p>
-                  <button 
+                  <button
                     onClick={handleToggleVideo}
                     className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
                   >
@@ -257,33 +279,33 @@ const MeetingRoom = () => {
           </div>
 
           <div className="mt-6 flex items-center justify-center gap-4">
-            <button 
+            <button
               onClick={handleToggleMute}
               className={`p-3 ${isMuted ? 'bg-red-100 text-red-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-full transition-colors`}
             >
               <Icon icon={isMuted ? "heroicons:microphone-slash" : "heroicons:microphone"} className="w-6 h-6" />
             </button>
-            <button 
+            <button
               onClick={handleToggleVideo}
               className={`p-3 ${!isVideoOn ? 'bg-red-100 text-red-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-full transition-colors`}
             >
               <Icon icon={isVideoOn ? "heroicons:video-camera" : "heroicons:video-camera-slash"} className="w-6 h-6" />
             </button>
-            <button 
+            <button
               onClick={handleToggleScreenShare}
               className={`p-3 ${isScreenSharing ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-full transition-colors ${!meeting?.settings.allowScreenSharing ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={!meeting?.settings.allowScreenSharing}
             >
               <Icon icon="heroicons:computer-desktop" className="w-6 h-6" />
             </button>
-            <button 
+            <button
               onClick={() => setIsChatOpen(!isChatOpen)}
               className={`p-3 ${isChatOpen ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'} rounded-full transition-colors ${!meeting?.settings.allowChat ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={!meeting?.settings.allowChat}
             >
               <Icon icon="heroicons:chat-bubble-left-right" className="w-6 h-6" />
             </button>
-            <button 
+            <button
               onClick={handleEndMeeting}
               className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
             >
