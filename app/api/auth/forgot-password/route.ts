@@ -41,9 +41,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Generate the reset link using the app URL from environment variables
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const resetLink = `${appUrl}/auth/reset-password?token=${token}`;
+
     // In a real application, you would send an email with the reset link
-    // For this example, we'll just return the token
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
+    // For development, we'll just log it to the console
 
     // For development purposes, log the reset link
     console.log('Password reset link:', resetLink);

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiRequest, authenticatedRequest, getAuthToken } from "@/lib/api";
 
 // Define the User type
 export interface User {
@@ -43,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkUserLoggedIn = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         const storedUser = localStorage.getItem('user');
 
         if (!token || !storedUser) {
@@ -54,23 +55,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Parse stored user data
         setUser(JSON.parse(storedUser));
 
-        // Validate token with server
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        try {
+          // Validate token with server using the authenticated request utility
+          const data = await authenticatedRequest('/auth/me');
 
-        // If token is invalid, clear auth state
-        if (!response.ok) {
+          // Update user data from server
+          setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        } catch (error) {
+          // If token is invalid, clear auth state
+          console.error('Token validation failed:', error);
           clearAuthState();
-          return;
         }
-
-        // Update user data from server
-        const data = await response.json();
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
       } catch (error) {
         console.error('Failed to restore authentication state:', error);
         // Clear invalid auth state
@@ -89,19 +85,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // Use the API utility to make the request
+      const data = await apiRequest('/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+        body: { email, password },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
 
       // Save token to localStorage
       localStorage.setItem('token', data.token);
@@ -150,19 +138,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
-      const response = await fetch('/api/auth/register', {
+      // Use the API utility to make the request
+      const data = await apiRequest('/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password, avatar }),
+        body: { name, email, password, avatar },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
-      }
 
       // Save token to localStorage
       localStorage.setItem('token', data.token);
@@ -203,19 +183,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email is required');
       }
 
-      const response = await fetch('/api/auth/forgot-password', {
+      // Use the API utility to make the request
+      const data = await apiRequest('/auth/forgot-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
+        body: { email },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send password reset email');
-      }
 
       // In development, log the reset link
       if (process.env.NODE_ENV !== 'production' && data.resetLink) {
@@ -243,12 +215,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('You must be logged in to update your profile');
       }
 
-      // Get token from localStorage
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication token not found');
-      }
-
       // Determine avatar - use uploaded image, current avatar, or generate from initials
       let avatar = profileImage || user.avatar;
 
@@ -257,20 +223,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
-      const response = await fetch('/api/auth/update-profile', {
+      // Use the authenticated API utility to make the request
+      const data = await authenticatedRequest('/auth/update-profile', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, email, avatar }),
+        body: { name, email, avatar },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile');
-      }
 
       // Save updated user data to localStorage
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -298,19 +255,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Password must be at least 6 characters');
       }
 
-      const response = await fetch('/api/auth/reset-password', {
+      // Use the API utility to make the request
+      await apiRequest('/auth/reset-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, password }),
+        body: { token, password },
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reset password');
-      }
 
       return true;
     } catch (error) {
