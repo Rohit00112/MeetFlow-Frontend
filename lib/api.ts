@@ -51,20 +51,37 @@ export async function apiRequest<T = any>(
     requestOptions.body = JSON.stringify(body);
   }
 
+  // Log the request for debugging
+  console.log(`API Request: ${method} ${API_URL}${endpoint}`);
+  if (method !== 'GET' && body) {
+    console.log('Request body:', JSON.stringify(body));
+  }
+
   // Make the request
   const response = await fetch(`${API_URL}${endpoint}`, requestOptions);
+  console.log(`API Response status: ${response.status} ${response.statusText}`);
 
   // Parse the response
   let data;
   try {
     // Check if the response is JSON
     const contentType = response.headers.get('content-type');
+    console.log('Response content-type:', contentType);
+
     if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
+      const responseText = await response.text();
+      console.log('Response text:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing JSON:', parseError);
+        throw new Error('Failed to parse JSON response. Please try again later.');
+      }
     } else {
       // If not JSON, get the text and create an error object
       const text = await response.text();
-      console.error('Received non-JSON response:', text.substring(0, 200) + '...');
+      console.error('Received non-JSON response:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
       data = { error: 'Received non-JSON response from server' };
     }
   } catch (error) {
