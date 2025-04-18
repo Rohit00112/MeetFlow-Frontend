@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { changePassword as changePasswordAction } from "@/redux/slices/authSlice";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -10,8 +11,8 @@ interface ChangePasswordModalProps {
 }
 
 const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClose }) => {
-  const { changePassword } = useAuth();
-  
+  const dispatch = useAppDispatch();
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,7 +21,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  
+
   // Reset form when modal is opened/closed
   React.useEffect(() => {
     if (isOpen) {
@@ -31,35 +32,35 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
       setSuccess(false);
     }
   }, [isOpen]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
+
     // Validate passwords
     if (!currentPassword || !newPassword || !confirmPassword) {
       setError("All fields are required");
       return;
     }
-    
+
     if (newPassword.length < 6) {
       setError("New password must be at least 6 characters");
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setError("New passwords do not match");
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      const result = await changePassword(currentPassword, newPassword);
-      
-      if (result) {
+      const resultAction = await dispatch(changePasswordAction({ currentPassword, newPassword }));
+
+      if (changePasswordAction.fulfilled.match(resultAction)) {
         setSuccess(true);
-        
+
         // Close modal after 2 seconds
         setTimeout(() => {
           onClose();
@@ -71,15 +72,15 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
       setLoading(false);
     }
   };
-  
+
   if (!isOpen) return null;
-  
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
-        
+
         {/* Modal panel */}
         <div className="inline-block overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <div className="px-4 pt-5 pb-4 bg-white sm:p-6 sm:pb-4">
@@ -96,7 +97,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
             </div>
-            
+
             {error && (
               <div className="p-4 mt-4 rounded-md bg-red-50">
                 <div className="flex">
@@ -109,7 +110,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
             )}
-            
+
             {success && (
               <div className="p-4 mt-4 rounded-md bg-green-50">
                 <div className="flex">
@@ -124,7 +125,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                 </div>
               </div>
             )}
-            
+
             <form onSubmit={handleSubmit} className="mt-4">
               <div className="space-y-4">
                 <div>
@@ -153,7 +154,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
                     New Password
@@ -180,7 +181,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
                     </button>
                   </div>
                 </div>
-                
+
                 <div>
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
                     Confirm New Password
@@ -200,7 +201,7 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ isOpen, onClo
               </div>
             </form>
           </div>
-          
+
           <div className="px-4 py-3 bg-gray-50 sm:px-6 sm:flex sm:flex-row-reverse">
             <button
               type="button"

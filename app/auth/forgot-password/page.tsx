@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { forgotPassword as forgotPasswordAction } from "@/redux/slices/authSlice";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -10,12 +11,13 @@ import GoogleLogo from "@/public/google-logo.svg";
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const { forgotPassword, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await forgotPassword(email);
+      await dispatch(forgotPasswordAction({ email }));
       setSubmitted(true);
     } catch (error) {
       console.error("Password reset request failed:", error);

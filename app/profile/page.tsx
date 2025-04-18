@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { updateProfile as updateProfileAction } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
@@ -49,7 +50,8 @@ const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null,
 };
 
 export default function ProfilePage() {
-  const { user, loading, error, updateProfile } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user, loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -159,8 +161,12 @@ export default function ProfilePage() {
         });
       }
 
-      // Update profile using the AuthContext function
-      await updateProfile(name, email, imageBase64);
+      // Update profile using Redux
+      const resultAction = await dispatch(updateProfileAction({ name, email, profileImage: imageBase64 }));
+
+      if (!updateProfileAction.fulfilled.match(resultAction)) {
+        throw new Error(resultAction.payload as string);
+      }
 
       // Show success message
       setSaveSuccess(true);

@@ -4,10 +4,10 @@ import React from "react";
 import Navbar from "@/components/Navbar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector } from "@/redux/hooks";
 
 const MeetingPage = () => {
-  const { user } = useAuth();
+  const { user } = useAppSelector((state: any) => state.auth);
 
   return (
     <ProtectedRoute>

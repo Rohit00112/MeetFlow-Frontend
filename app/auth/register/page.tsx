@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { register as registerAction } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -58,7 +59,8 @@ export default function RegisterPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { register, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
 
   // Create object URL for preview when profile image changes
@@ -114,8 +116,11 @@ export default function RegisterPage() {
         });
       }
 
-      await register(name, email, password, imageBase64);
-      router.push("/"); // Redirect to home page after successful registration
+      const resultAction = await dispatch(registerAction({ name, email, password, profileImage: imageBase64 }));
+
+      if (registerAction.fulfilled.match(resultAction)) {
+        router.push("/"); // Redirect to home page after successful registration
+      }
     } catch (error) {
       console.error("Registration failed:", error);
     }

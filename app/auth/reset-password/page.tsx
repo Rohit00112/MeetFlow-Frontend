@@ -4,19 +4,21 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { resetPassword as resetPasswordAction } from "@/redux/slices/authSlice";
 
 const ResetPasswordPage = () => {
-  const { resetPassword, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [validationError, setValidationError] = useState("");
   const [success, setSuccess] = useState(false);
-  
+
   // Get token from URL
   useEffect(() => {
     const tokenParam = searchParams?.get("token");
@@ -24,28 +26,28 @@ const ResetPasswordPage = () => {
       setToken(tokenParam);
     }
   }, [searchParams]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Reset errors and success
     setValidationError("");
-    
+
     // Validate passwords
     if (password !== confirmPassword) {
       setValidationError("Passwords do not match");
       return;
     }
-    
+
     if (password.length < 6) {
       setValidationError("Password must be at least 6 characters");
       return;
     }
-    
+
     // Reset password
-    const result = await resetPassword(token, password);
-    
-    if (result) {
+    const resultAction = await dispatch(resetPasswordAction({ token, password }));
+
+    if (resetPasswordAction.fulfilled.match(resultAction)) {
       setSuccess(true);
       // Redirect to login after 3 seconds
       setTimeout(() => {
@@ -53,7 +55,7 @@ const ResetPasswordPage = () => {
       }, 3000);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -102,7 +104,7 @@ const ResetPasswordPage = () => {
                   </div>
                 </div>
               )}
-              
+
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   New Password
@@ -155,7 +157,7 @@ const ResetPasswordPage = () => {
                   )}
                 </button>
               </div>
-              
+
               {!token && (
                 <div className="rounded-md bg-yellow-50 p-4">
                   <div className="flex">
@@ -172,7 +174,7 @@ const ResetPasswordPage = () => {
               )}
             </form>
           )}
-          
+
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
