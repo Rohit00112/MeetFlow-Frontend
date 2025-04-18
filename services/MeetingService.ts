@@ -51,8 +51,11 @@ let meetings: Meeting[] = [];
 class MeetingService {
   // Create a new meeting
   createMeeting(hostId: string, hostName: string, settings?: Partial<MeetingSettings>): Meeting {
+    // Generate a unique meeting ID
     const meetingId = generateMeetingId();
+    console.log('Creating new meeting with ID:', meetingId);
 
+    // Define default settings
     const defaultSettings: MeetingSettings = {
       allowScreenSharing: true,
       allowChat: true,
@@ -61,6 +64,7 @@ class MeetingService {
       allowRecording: false,
     };
 
+    // Create the new meeting object
     const newMeeting: Meeting = {
       id: meetingId,
       hostId,
@@ -76,21 +80,46 @@ class MeetingService {
           joinTime: new Date(),
         },
       ],
-      isActive: true,
+      isActive: true, // Always set to true for new meetings
       settings: { ...defaultSettings, ...settings },
     };
 
+    // Add to meetings array
     meetings.push(newMeeting);
+    console.log('Meeting created successfully:', newMeeting);
+    console.log('Current meetings:', meetings);
 
-    // In a real app, we would save this to a database
+    // Save to localStorage
     this.saveMeetingsToLocalStorage();
+
+    // Verify the meeting was saved correctly
+    const savedMeeting = this.getMeeting(meetingId);
+    if (!savedMeeting) {
+      console.error('Failed to save meeting:', meetingId);
+    } else if (!savedMeeting.isActive) {
+      console.error('Meeting saved but not active:', meetingId);
+      // Force set to active
+      savedMeeting.isActive = true;
+      this.saveMeetingsToLocalStorage();
+    }
 
     return newMeeting;
   }
 
   // Get a meeting by ID
   getMeeting(meetingId: string): Meeting | undefined {
-    return meetings.find(meeting => meeting.id === meetingId);
+    console.log('Getting meeting with ID:', meetingId);
+    console.log('Available meetings:', meetings.map(m => ({ id: m.id, isActive: m.isActive })));
+
+    const meeting = meetings.find(meeting => meeting.id === meetingId);
+
+    if (!meeting) {
+      console.log('Meeting not found with ID:', meetingId);
+      return undefined;
+    }
+
+    console.log('Found meeting:', { id: meeting.id, isActive: meeting.isActive, participants: meeting.participants.length });
+    return meeting;
   }
 
   // Join a meeting
@@ -260,7 +289,26 @@ class MeetingService {
   // Save meetings to localStorage
   saveMeetingsToLocalStorage(): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('meetings', JSON.stringify(meetings));
+      try {
+        // Make sure all meetings have isActive property set
+        meetings.forEach(meeting => {
+          if (meeting.isActive === undefined) {
+            meeting.isActive = true;
+          }
+        });
+
+        const meetingsJson = JSON.stringify(meetings);
+        localStorage.setItem('meetings', meetingsJson);
+        console.log('Saved meetings to localStorage:', meetings.length);
+
+        // Verify the data was saved correctly
+        const savedData = localStorage.getItem('meetings');
+        if (!savedData) {
+          console.error('Failed to save meetings to localStorage');
+        }
+      } catch (error) {
+        console.error('Error saving meetings to localStorage:', error);
+      }
     }
   }
 

@@ -40,8 +40,27 @@ const MeetingRoom = () => {
 
       if (!meetingData.isActive) {
         console.error('Meeting is not active:', meetingId);
-        setError("This meeting has ended.");
-        return;
+        console.log('Attempting to reactivate meeting...');
+
+        // Try to reactivate the meeting if the current user is the host
+        if (meetingData.hostId === user.id) {
+          console.log('Current user is the host, reactivating meeting');
+          meetingData.isActive = true;
+          meetingService.saveMeetingsToLocalStorage();
+
+          // Verify the meeting was reactivated
+          const updatedMeeting = meetingService.getMeeting(meetingId as string);
+          if (updatedMeeting && updatedMeeting.isActive) {
+            console.log('Meeting successfully reactivated');
+          } else {
+            console.error('Failed to reactivate meeting');
+            setError("This meeting has ended and could not be reactivated.");
+            return;
+          }
+        } else {
+          setError("This meeting has ended.");
+          return;
+        }
       }
 
       // Join the meeting if not already joined
