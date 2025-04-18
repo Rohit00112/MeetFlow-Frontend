@@ -34,9 +34,15 @@ const NavIcon = ({ icon, size = 24 }: IconProps) => (
 );
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // This effect runs only on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Handle clicks outside the dropdown
   useEffect(() => {
@@ -95,7 +101,9 @@ const Navbar = () => {
         <div className="flex gap-3 items-center">
           <NavIcon icon="mage:dots-menu" />
 
-          {user ? (
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+          ) : isClient && user ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -153,7 +161,7 @@ const Navbar = () => {
                 Sign in
               </button>
             </Link>
-          )}
+          ))}
         </div>
       </div>
     </nav>

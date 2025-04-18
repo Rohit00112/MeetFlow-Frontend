@@ -49,12 +49,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUser = localStorage.getItem('user');
 
         if (!token || !storedUser) {
+          clearAuthState();
           setLoading(false);
           return;
         }
 
-        // Parse stored user data
-        setUser(JSON.parse(storedUser));
+        // Parse stored user data and set it immediately for better UX
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (e) {
+          console.error('Failed to parse stored user data:', e);
+          clearAuthState();
+          setLoading(false);
+          return;
+        }
 
         try {
           // Validate token with server using the authenticated request utility
