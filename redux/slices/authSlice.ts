@@ -108,9 +108,12 @@ export const updateProfile = createAsyncThunk(
         avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4285F4&color=fff&size=200`;
       }
 
+      // Log the data being sent to the API
+      console.log('Sending profile update data:', { name, email, profileImage: profileImage ? 'base64_image_data' : null });
+
       const data = await authenticatedRequest('/auth/update-profile', {
         method: 'PUT',
-        body: { name, email, avatar },
+        body: { name, email, profileImage },
       });
 
       return data.user;

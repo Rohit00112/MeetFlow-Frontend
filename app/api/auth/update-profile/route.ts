@@ -63,11 +63,14 @@ export async function PUT(request: NextRequest) {
 
     // Process profile image if provided
     let avatarUrl = undefined;
-    if (profileImage && profileImage.startsWith('data:image')) {
+    if (profileImage && typeof profileImage === 'string' && profileImage.startsWith('data:image')) {
       console.log('Processing profile image');
       // In a real implementation, you would upload this to a storage service
       // For now, we'll just use the base64 string
       avatarUrl = profileImage;
+      console.log('Profile image processed successfully');
+    } else if (profileImage) {
+      console.log('Invalid profile image format:', typeof profileImage);
     }
 
     // Update user

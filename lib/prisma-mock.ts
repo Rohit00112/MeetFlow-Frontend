@@ -28,10 +28,16 @@ export class MockPrismaClient {
         updatedAt: new Date(),
       }),
       update: async ({ where, data }: any) => {
-        console.log('Mock Prisma update called with:', { where, data });
+        console.log('Mock Prisma update called with:', {
+          where,
+          data: {
+            ...data,
+            avatar: data.avatar ? 'base64_image_data_received' : null
+          }
+        });
 
         // For testing purposes, simulate a successful update
-        return {
+        const updatedUser = {
           id: where?.id || '1',
           name: data.name || 'Test User',
           email: data.email || 'test@example.com',
@@ -40,6 +46,15 @@ export class MockPrismaClient {
           createdAt: new Date(),
           updatedAt: new Date(),
         };
+
+        console.log('Mock Prisma update returning:', {
+          id: updatedUser.id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          hasAvatar: !!updatedUser.avatar
+        });
+
+        return updatedUser;
       },
     };
 
