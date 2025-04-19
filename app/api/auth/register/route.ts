@@ -49,16 +49,25 @@ export async function POST(request: NextRequest) {
     console.log('Password hashed successfully');
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        avatar: avatarUrl,
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          avatar: avatarUrl,
+        },
+      });
 
-    console.log('User created successfully with ID:', user.id);
+      console.log('User created successfully with ID:', user.id);
+    } catch (createError) {
+      console.error('Error creating user:', createError);
+      return NextResponse.json(
+        { error: createError instanceof Error ? createError.message : 'Failed to create user' },
+        { status: 500 }
+      );
+    }
 
     // Generate JWT token
     const token = signJWT({

@@ -1,4 +1,18 @@
 // Mock PrismaClient for development
+
+// In-memory database for storing users
+let users: any[] = [
+  {
+    id: '1',
+    name: 'Test User',
+    email: 'test@example.com',
+    password: '$2a$10$GQH.xZm5FVH7JMfFGCU4WuQD3d5SZB.xQYS.mG/IdJDdFqS5Jvy8K', // hashed 'password123'
+    avatar: 'https://ui-avatars.com/api/?name=Test+User&background=4285F4&color=fff&size=200',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+];
+
 export class MockPrismaClient {
   user: any;
   meeting: any;
@@ -6,19 +20,19 @@ export class MockPrismaClient {
   constructor() {
     this.user = {
       findUnique: async ({ where }: any) => {
-        // For testing purposes, return a mock user for a specific email
-        if (where.email === 'test@example.com') {
-          return {
-            id: '1',
-            name: 'Test User',
-            email: 'test@example.com',
-            password: '$2a$10$GQH.xZm5FVH7JMfFGCU4WuQD3d5SZB.xQYS.mG/IdJDdFqS5Jvy8K', // hashed 'password123'
-            avatar: 'https://ui-avatars.com/api/?name=Test+User&background=4285F4&color=fff&size=200',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+        console.log('Mock Prisma findUnique called with:', where);
+
+        // Find user by email or id
+        let foundUser = null;
+
+        if (where.email) {
+          foundUser = users.find(user => user.email === where.email);
+        } else if (where.id) {
+          foundUser = users.find(user => user.id === where.id);
         }
-        return null;
+
+        console.log('User found:', foundUser ? foundUser.email : 'No user found');
+        return foundUser;
       },
       findFirst: async () => null,
       create: async ({ data }: any) => {
@@ -28,6 +42,13 @@ export class MockPrismaClient {
           hasPassword: !!data.password,
           hasAvatar: !!data.avatar
         });
+
+        // Check if user with this email already exists
+        const existingUser = users.find(user => user.email === data.email);
+        if (existingUser) {
+          console.log('User with this email already exists:', data.email);
+          throw new Error('User with this email already exists');
+        }
 
         // Generate a unique ID
         const userId = `user_${Date.now()}`;
@@ -40,6 +61,9 @@ export class MockPrismaClient {
           updatedAt: new Date(),
         };
 
+        // Add user to our in-memory database
+        users.push(newUser);
+
         console.log('Mock Prisma created user:', {
           id: newUser.id,
           name: newUser.name,
@@ -47,8 +71,16 @@ export class MockPrismaClient {
           hasAvatar: !!newUser.avatar
         });
 
+        console.log('Total users in database:', users.length);
+
         return newUser;
       },
+      findMany: async () => {
+        console.log('Mock Prisma findMany called, returning all users');
+        console.log('Total users in database:', users.length);
+        return users;
+      },
+
       update: async ({ where, data }: any) => {
         console.log('Mock Prisma update called with:', {
           where,
@@ -58,16 +90,27 @@ export class MockPrismaClient {
           }
         });
 
-        // For testing purposes, simulate a successful update
+        // Find the user to update
+        const userIndex = users.findIndex(user => {
+          if (where.id) return user.id === where.id;
+          if (where.email) return user.email === where.email;
+          return false;
+        });
+
+        if (userIndex === -1) {
+          console.log('User not found for update');
+          throw new Error('User not found');
+        }
+
+        // Create updated user object
         const updatedUser = {
-          id: where?.id || '1',
-          name: data.name || 'Test User',
-          email: data.email || 'test@example.com',
-          password: data.password || '$2a$10$GQH.xZm5FVH7JMfFGCU4WuQD3d5SZB.xQYS.mG/IdJDdFqS5Jvy8K',
-          avatar: data.avatar || 'https://ui-avatars.com/api/?name=Test+User&background=4285F4&color=fff&size=200',
-          createdAt: new Date(),
+          ...users[userIndex],
+          ...data,
           updatedAt: new Date(),
         };
+
+        // Update user in our in-memory database
+        users[userIndex] = updatedUser;
 
         console.log('Mock Prisma update returning:', {
           id: updatedUser.id,
