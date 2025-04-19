@@ -6,6 +6,9 @@ import Link from "next/link";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import { resetPassword as resetPasswordAction } from "@/redux/slices/authSlice";
+import toast from "react-hot-toast";
+import { resetPasswordSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 const ResetPasswordPage = () => {
   const dispatch = useAppDispatch();
@@ -33,26 +36,47 @@ const ResetPasswordPage = () => {
     // Reset errors and success
     setValidationError("");
 
-    // Validate passwords
-    if (password !== confirmPassword) {
-      setValidationError("Passwords do not match");
-      return;
-    }
+    try {
+      // Validate form using Zod
+      const validatedData = resetPasswordSchema.parse({
+        token,
+        password,
+        confirmPassword
+      });
 
-    if (password.length < 6) {
-      setValidationError("Password must be at least 6 characters");
-      return;
-    }
+      // Reset password
+      const resultAction = await dispatch(resetPasswordAction({ token, password }));
 
-    // Reset password
-    const resultAction = await dispatch(resetPasswordAction({ token, password }));
+      if (resetPasswordAction.fulfilled.match(resultAction)) {
+        toast.success('Password reset successful');
+        setSuccess(true);
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          router.push("/auth/login");
+        }, 3000);
+      } else if (resetPasswordAction.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload as string || "Failed to reset password";
+        toast.error(errorMessage);
+        setValidationError(errorMessage);
+      }
+    } catch (error: unknown) {
+      console.error("Password reset error:", error);
 
-    if (resetPasswordAction.fulfilled.match(resultAction)) {
-      setSuccess(true);
-      // Redirect to login after 3 seconds
-      setTimeout(() => {
-        router.push("/auth/login");
-      }, 3000);
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+        const errorMessage = Object.values(fieldErrors)
+          .flat()
+          .join(", ");
+
+        toast.error(errorMessage);
+        setValidationError(errorMessage);
+      } else {
+        // Handle other errors
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+        setValidationError(errorMessage);
+      }
     }
   };
 
@@ -115,7 +139,6 @@ const ResetPasswordPage = () => {
                     name="password"
                     type="password"
                     autoComplete="new-password"
-                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -133,7 +156,6 @@ const ResetPasswordPage = () => {
                     name="confirm-password"
                     type="password"
                     autoComplete="new-password"
-                    required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
