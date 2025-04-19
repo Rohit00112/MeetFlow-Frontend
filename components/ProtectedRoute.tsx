@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector } from "@/redux/hooks";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
@@ -9,7 +9,7 @@ export default function ProtectedRoute({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
   const pathname = usePathname();
 

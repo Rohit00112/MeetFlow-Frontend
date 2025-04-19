@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { updateProfile as updateProfileAction } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -17,18 +19,95 @@ const getInitials = (name: string) => {
     .substring(0, 2);
 };
 
+// Helper function to compress images before upload
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    // Create a new image object
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+
+    img.onload = () => {
+      // Create a canvas element
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      // Calculate new dimensions (max 800px width/height while maintaining aspect ratio)
+      let width = img.width;
+      let height = img.height;
+      const maxSize = 800;
+
+      if (width > height && width > maxSize) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      } else if (height > maxSize) {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+
+      // Set canvas dimensions
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw image on canvas with new dimensions
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Convert canvas to blob
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            reject(new Error('Canvas to Blob conversion failed'));
+            return;
+          }
+
+          // Create a new file from the blob
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+
+          console.log(`Original size: ${file.size / 1024}KB, Compressed size: ${compressedFile.size / 1024}KB`);
+          resolve(compressedFile);
+        },
+        'image/jpeg',
+        0.7 // Quality (0.7 = 70% quality)
+      );
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+  });
+};
+
 // Avatar component that shows image or initials
 const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null, name: string, size?: number, className?: string }) => {
   if (src) {
     return (
-      <div className={`relative ${className}`} style={{ width: size, height: size }}>
-        <Image
-          src={src}
-          alt={name || 'Avatar'}
-          width={size}
-          height={size}
-          className="rounded-full object-cover ring-4 ring-white shadow-lg"
-        />
+      <div
+        className={`relative overflow-hidden rounded-full ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <Image
+            src={src}
+            alt={name || 'Avatar'}
+            width={size}
+            height={size}
+            className="rounded-full object-cover w-full h-full ring-4 ring-white shadow-lg"
+            style={{ objectFit: 'cover' }}
+            onError={(e) => {
+              // If image fails to load, show initials instead
+              console.error('Image failed to load:', src);
+              e.currentTarget.style.display = 'none';
+              // The parent div will show the initials fallback
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -48,7 +127,8 @@ const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null,
 };
 
 export default function ProfilePage() {
-  const { user, loading, error, updateProfile } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user, loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,6 +137,10 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect if not logged in
@@ -89,7 +173,43 @@ export default function ProfilePage() {
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      const file = e.target.files[0];
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setSaveError('Please select a valid image file (JPG, PNG, GIF, or WebP)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveError('Image size should be less than 5MB');
+        return;
+      }
+
+      // Create a new image to check dimensions
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+
+      img.onload = () => {
+        // Check if image is too small
+        if (img.width < 100 || img.height < 100) {
+          setSaveError('Image is too small. Please use an image that is at least 100x100 pixels.');
+          URL.revokeObjectURL(img.src);
+          return;
+        }
+
+        // Set the profile image
+        setProfileImage(file);
+        setSaveError(null);
+        URL.revokeObjectURL(img.src);
+      };
+
+      img.onerror = () => {
+        setSaveError('Failed to load image. Please try another file.');
+        URL.revokeObjectURL(img.src);
+      };
     }
   };
 
@@ -100,28 +220,88 @@ export default function ProfilePage() {
     }
   };
 
+  const validateForm = (): boolean => {
+    // Reset errors
+    setNameError(null);
+    setEmailError(null);
+    setSaveError(null);
+
+    let isValid = true;
+
+    // Validate name
+    if (!name.trim()) {
+      setNameError('Name is required');
+      isValid = false;
+    } else if (name.trim().length < 2) {
+      setNameError('Name must be at least 2 characters');
+      isValid = false;
+    }
+
+    // Validate email
+    if (!email.trim()) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError('Please enter a valid email address');
+      isValid = false;
+    }
+
+    return isValid;
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Reset success state
+    setSaveSuccess(false);
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
     setSaveLoading(true);
-    setSaveError(null);
 
     try {
       // Convert image to base64 if it exists
       let imageBase64 = null;
       if (profileImage) {
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(profileImage);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = error => reject(error);
-        });
+        try {
+          // Compress the image before converting to base64
+          const compressedImage = await compressImage(profileImage);
+
+          imageBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(compressedImage);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+          });
+
+          console.log('Image converted to base64 successfully');
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          setSaveError('Failed to process the image. Please try again with a different image.');
+          setSaveLoading(false);
+          return;
+        }
       }
 
-      // Update profile using the AuthContext function
-      await updateProfile(name, email, imageBase64);
+      // Update profile using Redux
+      const resultAction = await dispatch(updateProfileAction({ name, email, profileImage: imageBase64 }));
 
-      // Success - exit edit mode
-      setIsEditing(false);
+      if (updateProfileAction.fulfilled.match(resultAction)) {
+        // Show success message
+        setSaveSuccess(true);
+
+        // Exit edit mode after a short delay
+        setTimeout(() => {
+          setIsEditing(false);
+          setSaveSuccess(false);
+        }, 2000);
+      } else if (updateProfileAction.rejected.match(resultAction)) {
+        // Handle the rejected action
+        setSaveError(resultAction.payload as string || "Failed to update profile");
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : "Failed to update profile. Please try again.");
       console.error("Profile update failed:", error);
@@ -225,20 +405,49 @@ export default function ProfilePage() {
                   </div>
                 )}
 
+                {saveSuccess && (
+                  <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-md shadow-sm">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <Icon icon="heroicons:check-circle" className="h-5 w-5 text-green-500" />
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-green-700">Profile updated successfully!</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {isEditing && (
                   <div className="flex flex-col items-center mb-8">
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
-                      accept="image/*"
+                      accept="image/jpeg, image/png, image/gif, image/webp"
                       className="hidden"
                       id="profile-image"
                     />
-                    <p className="text-sm text-blue-600 mt-1 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center">
-                      <Icon icon="heroicons:camera" className="h-4 w-4 mr-2" />
-                      {profileImage ? profileImage.name : "Click avatar to change profile picture"}
-                    </p>
+                    <div className="flex flex-col items-center">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-sm text-blue-600 mt-1 bg-blue-50 px-4 py-2 rounded-full inline-flex items-center hover:bg-blue-100 transition-colors duration-200"
+                      >
+                        <Icon icon="heroicons:camera" className="h-4 w-4 mr-2" />
+                        {profileImage ? 'Change image' : "Upload profile picture"}
+                      </button>
+                      {profileImage && (
+                        <div className="mt-2 text-xs text-gray-500 flex items-center">
+                          <Icon icon="heroicons:document" className="h-3 w-3 mr-1" />
+                          {profileImage.name.length > 25 ? profileImage.name.substring(0, 22) + '...' : profileImage.name}
+                          ({(profileImage.size / 1024).toFixed(1)}KB)
+                        </div>
+                      )}
+                      <p className="mt-2 text-xs text-gray-500">
+                        Recommended: Square image, max 5MB (JPG, PNG, GIF)
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -256,9 +465,15 @@ export default function ProfilePage() {
                           id="name"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${nameError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
                           placeholder="Your full name"
                         />
+                        {nameError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {nameError}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -274,9 +489,15 @@ export default function ProfilePage() {
                           id="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="block w-full px-4 py-3 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300"
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${emailError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
                           placeholder="Your email address"
                         />
+                        {emailError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {emailError}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -327,13 +548,13 @@ export default function ProfilePage() {
                   </div>
                   <dd className="text-sm text-gray-900 flex items-center justify-end">
                     <span className="mr-3">••••••••</span>
-                    <Link
-                      href="/auth/forgot-password"
+                    <button
+                      onClick={() => setIsChangePasswordModalOpen(true)}
                       className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group transition-all duration-200"
                     >
                       <span>Change</span>
                       <Icon icon="heroicons:arrow-right" className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform duration-200" />
-                    </Link>
+                    </button>
                   </dd>
                 </div>
                 <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-gray-100">
@@ -395,6 +616,12 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+      />
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { Icon } from "@iconify/react";
 import Logo from "@/public/logo.png";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { logout } from "@/redux/slices/authSlice";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 
@@ -34,9 +35,16 @@ const NavIcon = ({ icon, size = 24 }: IconProps) => (
 );
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, loading } = useAppSelector((state: any) => state.auth);
+  const dispatch = useAppDispatch();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // This effect runs only on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Handle clicks outside the dropdown
   useEffect(() => {
@@ -53,7 +61,7 @@ const Navbar = () => {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
+    await dispatch(logout());
     setDropdownOpen(false);
   };
 
@@ -95,7 +103,9 @@ const Navbar = () => {
         <div className="flex gap-3 items-center">
           <NavIcon icon="mage:dots-menu" />
 
-          {user ? (
+          {loading ? (
+            <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+          ) : isClient && user ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}

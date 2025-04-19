@@ -1,24 +1,53 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { forgotPassword as forgotPasswordAction } from "@/redux/slices/authSlice";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import GoogleLogo from "@/public/google-logo.svg";
+import toast from "react-hot-toast";
+import { forgotPasswordSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const { forgotPassword, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await forgotPassword(email);
-      setSubmitted(true);
-    } catch (error) {
+      // Validate email using Zod
+      const validatedData = forgotPasswordSchema.parse({ email });
+
+      // Dispatch forgot password action
+      const resultAction = await dispatch(forgotPasswordAction({ email }));
+
+      if (forgotPasswordAction.fulfilled.match(resultAction)) {
+        toast.success('Password reset link sent to your email');
+        setSubmitted(true);
+      } else if (forgotPasswordAction.rejected.match(resultAction)) {
+        toast.error(resultAction.payload as string || 'Failed to send reset link');
+      }
+    } catch (error: unknown) {
       console.error("Password reset request failed:", error);
+
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+        const errorMessage = Object.values(fieldErrors)
+          .flat()
+          .join(", ");
+
+        toast.error(errorMessage);
+      } else {
+        // Handle other errors
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+      }
     }
   };
 
@@ -81,7 +110,6 @@ export default function ForgotPasswordPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Email address"
                   value={email}

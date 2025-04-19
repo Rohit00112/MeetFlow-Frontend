@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector, useAppDispatch } from "@/redux/hooks";
+import { register as registerAction } from "@/redux/slices/authSlice";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import GoogleLogo from "@/public/google-logo.svg";
+import toast from "react-hot-toast";
+import { registerSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -22,14 +26,26 @@ const getInitials = (name: string) => {
 const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, size?: number }) => {
   if (src) {
     return (
-      <div className="relative" style={{ width: size, height: size }}>
-        <Image
-          src={src}
-          alt={name || 'Avatar'}
-          width={size}
-          height={size}
-          className="rounded-full object-cover"
-        />
+      <div
+        className="relative overflow-hidden rounded-full"
+        style={{ width: size, height: size }}
+      >
+        <div className="absolute inset-0 rounded-full overflow-hidden">
+          <Image
+            src={src}
+            alt={name || 'Avatar'}
+            width={size}
+            height={size}
+            className="rounded-full object-cover w-full h-full ring-4 ring-white shadow-lg"
+            style={{ objectFit: 'cover' }}
+            onError={(e) => {
+              // If image fails to load, show initials instead
+              console.error('Image failed to load:', src);
+              e.currentTarget.style.display = 'none';
+              // The parent div will show the initials fallback
+            }}
+          />
+        </div>
       </div>
     );
   }
@@ -40,7 +56,7 @@ const Avatar = ({ src, name, size = 100 }: { src: string | null, name: string, s
 
   return (
     <div
-      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium`}
+      className={`flex items-center justify-center rounded-full ${bgColor} text-white font-medium ring-4 ring-white shadow-lg`}
       style={{ width: size, height: size, fontSize: size / 2.5 }}
     >
       {initials}
@@ -58,7 +74,8 @@ export default function RegisterPage() {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { register, loading, error } = useAuth();
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
 
   // Create object URL for preview when profile image changes
@@ -75,7 +92,23 @@ export default function RegisterPage() {
   // Handle file input change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      const file = e.target.files[0];
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setFormError('Please select a valid image file (JPG, PNG, GIF, or WebP)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError('Image size should be less than 5MB');
+        return;
+      }
+
+      setProfileImage(file);
+      setFormError(null);
     }
   };
 
@@ -90,34 +123,66 @@ export default function RegisterPage() {
     e.preventDefault();
     setFormError(null);
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setFormError("Passwords do not match");
-      return;
-    }
-
-    // Validate password strength
-    if (password.length < 6) {
-      setFormError("Password must be at least 6 characters");
-      return;
-    }
-
     try {
+      // Validate form using Zod
+      const validatedData = registerSchema.parse({
+        name,
+        email,
+        password,
+        confirmPassword
+      });
+
       // Convert image to base64 if it exists
       let imageBase64 = null;
       if (profileImage) {
-        imageBase64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(profileImage);
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = error => reject(error);
-        });
+        try {
+          console.log('Converting profile image to base64');
+          imageBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(profileImage);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+          });
+          console.log('Profile image converted to base64 successfully');
+        } catch (error) {
+          console.error('Error converting image to base64:', error);
+          toast.error('Failed to process the image. Please try again with a different image.');
+          setFormError('Failed to process the image. Please try again with a different image.');
+          return;
+        }
       }
 
-      await register(name, email, password, imageBase64);
-      router.push("/"); // Redirect to home page after successful registration
-    } catch (error) {
-      console.error("Registration failed:", error);
+      console.log('Dispatching register action');
+      const resultAction = await dispatch(registerAction({ name, email, password, profileImage: imageBase64 }));
+
+      if (registerAction.fulfilled.match(resultAction)) {
+        toast.success('Registration successful!');
+        console.log('Registration successful, redirecting to home page');
+        router.push("/"); // Redirect to home page after successful registration
+      } else if (registerAction.rejected.match(resultAction)) {
+        // Handle the rejected action
+        console.error('Registration failed:', resultAction.payload);
+        toast.error(resultAction.payload as string || "Registration failed");
+        setFormError(resultAction.payload as string || "Registration failed");
+      }
+    } catch (error: unknown) {
+      console.error("Registration error:", error);
+
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+        const errorMessage = Object.values(fieldErrors)
+          .flat()
+          .join(", ");
+
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      } else {
+        // Handle other errors
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      }
     }
   };
 
@@ -192,7 +257,6 @@ export default function RegisterPage() {
                   name="name"
                   type="text"
                   autoComplete="name"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Full name"
                   value={name}
@@ -205,7 +269,6 @@ export default function RegisterPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Email address"
                   value={email}
@@ -218,7 +281,6 @@ export default function RegisterPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Password"
                   value={password}
@@ -241,7 +303,6 @@ export default function RegisterPage() {
                   name="confirm-password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Confirm password"
                   value={confirmPassword}
@@ -255,7 +316,6 @@ export default function RegisterPage() {
                 id="terms"
                 name="terms"
                 type="checkbox"
-                required
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">

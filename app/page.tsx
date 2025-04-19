@@ -8,7 +8,7 @@ import Image3 from "@/public/slider3.png";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAppSelector } from "@/redux/hooks";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 interface ImageProps {
@@ -215,7 +215,7 @@ const DebugInfo = ({ isOpen }: { isOpen: boolean }) => {
 };
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user } = useAppSelector((state: any) => state.auth);
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [inputValue, setInputValue] = useState("");
   const [currentSlide, setCurrentSlide] = useState<ImageProps>(images[0]);
