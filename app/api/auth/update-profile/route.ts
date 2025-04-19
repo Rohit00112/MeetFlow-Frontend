@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyJWT } from '@/lib/jwt';
+import { verifyJWT, signJWT } from '@/lib/jwt';
 
 export async function PUT(request: NextRequest) {
   console.log('Update profile API called');
@@ -63,14 +63,24 @@ export async function PUT(request: NextRequest) {
 
     console.log('User profile updated successfully');
 
-    // Return updated user data
-    return NextResponse.json({
+    // Generate a new token with updated user data
+    const newToken = await signJWT({
       id: updatedUser.id,
-      name: updatedUser.name,
       email: updatedUser.email,
-      bio: updatedUser.bio,
-      phone: updatedUser.phone,
-      avatar: updatedUser.avatar,
+      name: updatedUser.name,
+    });
+
+    // Return updated user data and new token
+    return NextResponse.json({
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        bio: updatedUser.bio,
+        phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
+      },
+      token: newToken,
     });
   } catch (error) {
     console.error('Update profile error:', error);

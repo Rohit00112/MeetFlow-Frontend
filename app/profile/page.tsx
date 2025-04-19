@@ -338,6 +338,14 @@ export default function ProfilePage() {
         const errorMessage = resultAction.payload as string || "Failed to update profile";
         toast.error(errorMessage);
         setSaveError(errorMessage);
+
+        // If there's a token error, redirect to login
+        if (errorMessage.includes('token') || errorMessage.includes('authentication') || errorMessage.includes('unauthorized')) {
+          toast.error('Your session has expired. Please log in again.');
+          setTimeout(() => {
+            router.push('/auth/login');
+          }, 2000);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to update profile. Please try again.";

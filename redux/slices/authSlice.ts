@@ -153,6 +153,13 @@ export const updateProfile = createAsyncThunk(
 
       console.log('Update profile response:', data);
 
+      // Store the new token in localStorage
+      if (data.token) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', data.token);
+        }
+      }
+
       return data.user;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to update profile');
@@ -327,6 +334,7 @@ const authSlice = createSlice({
       .addCase(updateProfile.fulfilled, (state, action: PayloadAction<User>) => {
         state.loading = false;
         state.user = action.payload;
+        // Note: The token is already updated in localStorage in the action
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;

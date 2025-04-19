@@ -145,7 +145,9 @@ export async function authenticatedRequest<T = any>(
     if (error instanceof Error &&
         (error.message.includes('Authentication failed') ||
          error.message.includes('invalid token') ||
-         error.message.includes('jwt expired'))) {
+         error.message.includes('jwt expired') ||
+         error.message.includes('unauthorized') ||
+         error.message.includes('authentication'))) {
       // Clear the invalid token
       if (typeof window !== 'undefined') {
         console.warn('Token validation failed, clearing auth state:', error.message);
