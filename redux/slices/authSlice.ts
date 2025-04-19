@@ -160,7 +160,11 @@ export const updateProfile = createAsyncThunk(
         }
       }
 
-      return data.user;
+      // Return both user and token for the reducer
+      return {
+        user: data.user,
+        token: data.token
+      };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to update profile');
     }
@@ -331,10 +335,11 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateProfile.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(updateProfile.fulfilled, (state, action: PayloadAction<{user: User, token: string}>) => {
         state.loading = false;
-        state.user = action.payload;
-        // Note: The token is already updated in localStorage in the action
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = true;
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;
