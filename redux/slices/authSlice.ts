@@ -32,10 +32,13 @@ export const login = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
+      // Call the backend login endpoint
       const data = await apiRequest('/auth/login', {
         method: 'POST',
         body: { email, password },
       });
+
+      console.log('Login response:', data);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Login failed');
@@ -66,10 +69,13 @@ export const register = createAsyncThunk(
         profileImage: profileImage ? 'base64_image_data' : null
       });
 
+      // Call the backend register endpoint
       const data = await apiRequest('/auth/register', {
         method: 'POST',
-        body: { name, email, password, profileImage },
+        body: { name, email, password, avatar: profileImage },
       });
+
+      console.log('Registration response:', data);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Registration failed');
@@ -88,7 +94,9 @@ export const logout = createAsyncThunk('auth/logout', async (_, { rejectWithValu
 
 export const fetchUserProfile = createAsyncThunk('auth/fetchUserProfile', async (_, { rejectWithValue }) => {
   try {
+    // Call the backend user profile endpoint
     const data = await authenticatedRequest('/auth/me');
+    console.log('User profile response:', data);
     return data.user;
   } catch (error) {
     return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch user profile');
@@ -119,10 +127,13 @@ export const updateProfile = createAsyncThunk(
       // Log the data being sent to the API
       console.log('Sending profile update data:', { name, email, profileImage: profileImage ? 'base64_image_data' : null });
 
+      // Call the backend update profile endpoint
       const data = await authenticatedRequest('/auth/update-profile', {
         method: 'PUT',
-        body: { name, email, profileImage },
+        body: { name, email, avatar: profileImage },
       });
+
+      console.log('Update profile response:', data);
 
       return data.user;
     } catch (error) {
@@ -138,10 +149,13 @@ export const changePassword = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      await authenticatedRequest('/auth/change-password', {
+      // Call the backend change password endpoint
+      const response = await authenticatedRequest('/auth/change-password', {
         method: 'POST',
         body: { currentPassword, newPassword },
       });
+
+      console.log('Change password response:', response);
 
       return true;
     } catch (error) {
@@ -154,10 +168,13 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async ({ email }: { email: string }, { rejectWithValue }) => {
     try {
-      await apiRequest('/auth/forgot-password', {
+      // Call the backend forgot password endpoint
+      const response = await apiRequest('/auth/forgot-password', {
         method: 'POST',
         body: { email },
       });
+
+      console.log('Forgot password response:', response);
 
       return true;
     } catch (error) {
@@ -170,10 +187,13 @@ export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async ({ token, password }: { token: string; password: string }, { rejectWithValue }) => {
     try {
-      await apiRequest('/auth/reset-password', {
+      // Call the backend reset password endpoint
+      const response = await apiRequest('/auth/reset-password', {
         method: 'POST',
         body: { token, password },
       });
+
+      console.log('Reset password response:', response);
 
       return true;
     } catch (error) {

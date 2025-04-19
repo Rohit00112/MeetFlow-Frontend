@@ -3,7 +3,8 @@
  */
 
 // Base URL for API requests
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+console.log('Using API URL:', API_URL);
 
 // Types
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
