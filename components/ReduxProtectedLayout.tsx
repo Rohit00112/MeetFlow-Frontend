@@ -85,7 +85,7 @@ export default function ReduxProtectedLayout({
 
   // Don't render anything on the server for protected routes
   if (!isClient) {
-    return null;
+    return <div className="min-h-screen"></div>; // Return empty div instead of null to prevent hydration issues
   }
 
   // Show loading state while checking authentication
@@ -99,8 +99,11 @@ export default function ReduxProtectedLayout({
 
   // If on auth page and logged in, redirect to home
   if (!loading && isAuthenticated && pathname.startsWith("/auth")) {
-    router.push("/");
-    return null;
+    // Use setTimeout to avoid React state updates during rendering
+    setTimeout(() => {
+      router.push("/");
+    }, 0);
+    return <div className="min-h-screen"></div>; // Return empty div instead of null
   }
 
   // If on protected page and not logged in, component will redirect in useEffect

@@ -9,7 +9,7 @@ import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useAppSelector } from "@/redux/hooks";
-import ProtectedRoute from "@/components/ProtectedRoute";
+// Removed ProtectedRoute import as we're using ReduxProtectedLayout
 
 interface ImageProps {
   src: StaticImageData;
@@ -219,7 +219,13 @@ export default function Home() {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [inputValue, setInputValue] = useState("");
   const [currentSlide, setCurrentSlide] = useState<ImageProps>(images[0]);
+  const [isClient, setIsClient] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // This effect runs only on the client side
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Log state changes
   React.useEffect(() => {
@@ -256,7 +262,7 @@ export default function Home() {
               Connect, collaborate, and celebrate from anywhere with Google Meet
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              {user ? (
+              {isClient && user ? (
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => {
