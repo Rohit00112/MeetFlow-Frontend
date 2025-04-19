@@ -153,14 +153,31 @@ export const updateProfile = createAsyncThunk(
 
       console.log('Update profile response:', data);
 
+      console.log('Profile update response received:', {
+        hasUser: !!data.user,
+        hasToken: !!data.token,
+        userData: data.user ? { id: data.user.id, name: data.user.name } : null
+      });
+
+      // Validate response data
+      if (!data.token) {
+        console.error('No token received in profile update response');
+        throw new Error('Authentication error: No token received');
+      }
+
+      if (!data.user) {
+        console.error('No user data received in profile update response');
+        throw new Error('Authentication error: No user data received');
+      }
+
       // Store the new token in localStorage
-      if (data.token) {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', data.token);
-        }
+      if (typeof window !== 'undefined') {
+        console.log('Storing new token in localStorage');
+        localStorage.setItem('token', data.token);
       }
 
       // Return both user and token for the reducer
+      console.log('Returning user and token to reducer');
       return {
         user: data.user,
         token: data.token
@@ -336,10 +353,12 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(updateProfile.fulfilled, (state, action: PayloadAction<{user: User, token: string}>) => {
+        console.log('Profile update fulfilled, updating Redux state');
         state.loading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        console.log('Redux state updated with new token and user data');
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.loading = false;

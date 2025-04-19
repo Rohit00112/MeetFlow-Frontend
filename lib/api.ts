@@ -129,17 +129,22 @@ export async function authenticatedRequest<T = any>(
   endpoint: string,
   options: Omit<RequestOptions, 'token'> = {}
 ): Promise<T> {
+  console.log(`Making authenticated request to ${endpoint}`);
   const token = getAuthToken();
 
   if (!token) {
+    console.error('No authentication token found');
     throw new Error('No authentication token found');
   }
 
   try {
-    return await apiRequest<T>(endpoint, {
+    console.log(`Using token for request to ${endpoint}`);
+    const response = await apiRequest<T>(endpoint, {
       ...options,
       token,
     });
+    console.log(`Authenticated request to ${endpoint} successful`);
+    return response;
   } catch (error) {
     // Handle token expiration
     if (error instanceof Error &&
@@ -147,7 +152,9 @@ export async function authenticatedRequest<T = any>(
          error.message.includes('invalid token') ||
          error.message.includes('jwt expired') ||
          error.message.includes('unauthorized') ||
-         error.message.includes('authentication'))) {
+         error.message.includes('authentication') ||
+         error.message.includes('Unauthorized') ||
+         error.message.includes('Authentication'))) {
       // Clear the invalid token
       if (typeof window !== 'undefined') {
         console.warn('Token validation failed, clearing auth state:', error.message);
@@ -159,6 +166,7 @@ export async function authenticatedRequest<T = any>(
       }
     }
 
+    console.error(`Authenticated request to ${endpoint} failed:`, error);
     throw error;
   }
 }

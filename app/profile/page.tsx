@@ -314,6 +314,7 @@ export default function ProfilePage() {
         }
       }
 
+      console.log('Dispatching profile update action');
       // Update profile using Redux
       const resultAction = await dispatch(updateProfileAction({
         name,
@@ -323,7 +324,14 @@ export default function ProfilePage() {
         profileImage: imageBase64
       }));
 
+      console.log('Profile update action result:', {
+        isSuccess: updateProfileAction.fulfilled.match(resultAction),
+        isError: updateProfileAction.rejected.match(resultAction),
+        payload: resultAction.payload ? 'Has payload' : 'No payload'
+      });
+
       if (updateProfileAction.fulfilled.match(resultAction)) {
+        console.log('Profile update successful');
         // Show success message
         toast.success('Profile updated successfully!');
         setSaveSuccess(true);
@@ -336,12 +344,23 @@ export default function ProfilePage() {
       } else if (updateProfileAction.rejected.match(resultAction)) {
         // Handle the rejected action
         const errorMessage = resultAction.payload as string || "Failed to update profile";
+        console.error('Profile update failed:', errorMessage);
         toast.error(errorMessage);
         setSaveError(errorMessage);
 
         // If there's a token error, redirect to login
-        if (errorMessage.includes('token') || errorMessage.includes('authentication') || errorMessage.includes('unauthorized')) {
+        if (errorMessage.includes('token') ||
+            errorMessage.includes('authentication') ||
+            errorMessage.includes('unauthorized') ||
+            errorMessage.includes('Authentication')) {
+          console.log('Authentication error detected, redirecting to login');
           toast.error('Your session has expired. Please log in again.');
+
+          // Clear local storage
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('token');
+          }
+
           setTimeout(() => {
             router.push('/auth/login');
           }, 2000);

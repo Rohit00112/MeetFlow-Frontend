@@ -24,8 +24,13 @@ export default function ReduxProtectedLayout({
 
   // Check authentication on initial load
   useEffect(() => {
-    if (isClient && token && !user) {
-      dispatch(fetchUserProfile());
+    if (isClient) {
+      if (token && !user) {
+        console.log('Token found but no user data, fetching user profile');
+        dispatch(fetchUserProfile());
+      } else if (!token) {
+        console.log('No token found in protected layout');
+      }
     }
   }, [isClient, token, user, dispatch]);
 

@@ -4,16 +4,27 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-do-not-use-in-prod
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 export function signJWT(payload: any, options?: jwt.SignOptions): string {
-  return jwt.sign(payload, JWT_SECRET, {
+  console.log('Signing new JWT token with payload:', {
+    id: payload.id,
+    name: payload.name,
+    email: payload.email
+  });
+
+  const token = jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
     ...options,
   });
+
+  console.log('JWT token signed successfully');
+  return token;
 }
 
 export function verifyJWT<T>(token: string): T | null {
   try {
+    console.log('Verifying JWT token');
     // Add more detailed logging for debugging
     const decoded = jwt.verify(token, JWT_SECRET) as T;
+    console.log('JWT token verified successfully');
     return decoded;
   } catch (error) {
     // Log the specific error for debugging

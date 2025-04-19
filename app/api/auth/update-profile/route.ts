@@ -70,8 +70,10 @@ export async function PUT(request: NextRequest) {
       name: updatedUser.name,
     });
 
-    // Return updated user data and new token
-    return NextResponse.json({
+    console.log('Generated new token after profile update');
+
+    // Prepare response data
+    const responseData = {
       user: {
         id: updatedUser.id,
         name: updatedUser.name,
@@ -81,7 +83,12 @@ export async function PUT(request: NextRequest) {
         avatar: updatedUser.avatar,
       },
       token: newToken,
-    });
+    };
+
+    console.log('Sending response with new token and updated user data');
+
+    // Return updated user data and new token
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Update profile error:', error);
     return NextResponse.json(
