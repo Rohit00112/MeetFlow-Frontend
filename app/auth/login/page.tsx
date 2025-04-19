@@ -8,6 +8,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import GoogleLogo from "@/public/google-logo.svg";
+import toast from "react-hot-toast";
+import { loginSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,41 +32,42 @@ export default function LoginPage() {
     setFormError(null);
     console.log("Login form submitted");
 
-    // Validate form
-    if (!email.trim()) {
-      setFormError("Email is required");
-      console.log("Form validation failed: Email is required");
-      return;
-    }
-
-    if (!password) {
-      setFormError("Password is required");
-      console.log("Form validation failed: Password is required");
-      return;
-    }
-
-    console.log("Form validation passed, attempting login");
-
     try {
-      // For testing purposes, hardcode a successful login for test@example.com
-      if (email === "test@example.com" && password === "password123") {
-        console.log("Using test credentials, this should work");
-      }
+      // Validate form using Zod
+      const validatedData = loginSchema.parse({ email, password });
+      console.log("Form validation passed, attempting login");
 
       const resultAction = await dispatch(loginAction({ email, password }));
       console.log("Login action result:", resultAction);
 
       if (loginAction.fulfilled.match(resultAction)) {
+        toast.success("Login successful");
         console.log("Login successful, redirecting to home page");
         router.push("/"); // Redirect to home page after successful login
       } else if (loginAction.rejected.match(resultAction)) {
         console.error("Login failed:", resultAction.payload);
-        // The error is already set in the Redux state
+        // Show error toast
+        toast.error(resultAction.payload as string || "Login failed. Please try again.");
         setFormError(resultAction.payload as string || "Login failed. Please try again.");
       }
-    } catch (error) {
-      console.error("Login failed with exception:", error);
-      setFormError(error instanceof Error ? error.message : "An unexpected error occurred");
+    } catch (error: unknown) {
+      console.error("Login error:", error);
+
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+        const errorMessage = Object.values(fieldErrors)
+          .flat()
+          .join(", ");
+
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      } else {
+        // Handle other errors
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      }
     }
   };
 
@@ -116,7 +120,6 @@ export default function LoginPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   className={`appearance-none relative block w-full px-3 py-3 border ${formError && formError.includes('Email') ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base`}
                   placeholder="Email address"
                   value={email}
@@ -134,7 +137,6 @@ export default function LoginPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
-                  required
                   className={`appearance-none relative block w-full px-3 py-3 border ${formError && formError.includes('Password') || error && error.includes('password') ? 'border-red-300' : 'border-gray-300'} placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base`}
                   placeholder="Password"
                   value={password}

@@ -8,6 +8,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import GoogleLogo from "@/public/google-logo.svg";
+import toast from "react-hot-toast";
+import { registerSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -120,19 +123,15 @@ export default function RegisterPage() {
     e.preventDefault();
     setFormError(null);
 
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setFormError("Passwords do not match");
-      return;
-    }
-
-    // Validate password strength
-    if (password.length < 6) {
-      setFormError("Password must be at least 6 characters");
-      return;
-    }
-
     try {
+      // Validate form using Zod
+      const validatedData = registerSchema.parse({
+        name,
+        email,
+        password,
+        confirmPassword
+      });
+
       // Convert image to base64 if it exists
       let imageBase64 = null;
       if (profileImage) {
@@ -147,6 +146,7 @@ export default function RegisterPage() {
           console.log('Profile image converted to base64 successfully');
         } catch (error) {
           console.error('Error converting image to base64:', error);
+          toast.error('Failed to process the image. Please try again with a different image.');
           setFormError('Failed to process the image. Please try again with a different image.');
           return;
         }
@@ -156,15 +156,33 @@ export default function RegisterPage() {
       const resultAction = await dispatch(registerAction({ name, email, password, profileImage: imageBase64 }));
 
       if (registerAction.fulfilled.match(resultAction)) {
+        toast.success('Registration successful!');
         console.log('Registration successful, redirecting to home page');
         router.push("/"); // Redirect to home page after successful registration
       } else if (registerAction.rejected.match(resultAction)) {
         // Handle the rejected action
         console.error('Registration failed:', resultAction.payload);
+        toast.error(resultAction.payload as string || "Registration failed");
         setFormError(resultAction.payload as string || "Registration failed");
       }
-    } catch (error) {
-      console.error("Registration failed:", error);
+    } catch (error: unknown) {
+      console.error("Registration error:", error);
+
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+        const errorMessage = Object.values(fieldErrors)
+          .flat()
+          .join(", ");
+
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      } else {
+        // Handle other errors
+        const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+        toast.error(errorMessage);
+        setFormError(errorMessage);
+      }
     }
   };
 
@@ -239,7 +257,6 @@ export default function RegisterPage() {
                   name="name"
                   type="text"
                   autoComplete="name"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Full name"
                   value={name}
@@ -252,7 +269,6 @@ export default function RegisterPage() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Email address"
                   value={email}
@@ -265,7 +281,6 @@ export default function RegisterPage() {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Password"
                   value={password}
@@ -288,7 +303,6 @@ export default function RegisterPage() {
                   name="confirm-password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  required
                   className="appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-base"
                   placeholder="Confirm password"
                   value={confirmPassword}
@@ -302,7 +316,6 @@ export default function RegisterPage() {
                 id="terms"
                 name="terms"
                 type="checkbox"
-                required
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
