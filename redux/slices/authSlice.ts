@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { apiRequest, authenticatedRequest } from '@/lib/api';
+import { setToken, removeToken, clearAuthData } from '@/lib/tokenManager';
 
 // Define User type
 interface User {
@@ -170,11 +171,9 @@ export const updateProfile = createAsyncThunk(
         throw new Error('Authentication error: No user data received');
       }
 
-      // Store the new token in localStorage
-      if (typeof window !== 'undefined') {
-        console.log('Storing new token in localStorage');
-        localStorage.setItem('token', data.token);
-      }
+      // Store the new token using tokenManager
+      console.log('Storing new token using tokenManager');
+      setToken(data.token);
 
       // Return both user and token for the reducer
       console.log('Returning user and token to reducer');
@@ -270,10 +269,9 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
-        // Save token to localStorage for API requests
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', action.payload.token);
-        }
+        // Save token using tokenManager
+        setToken(action.payload.token);
+        console.log('Login successful, token saved and state updated');
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -292,10 +290,9 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
-        // Save token to localStorage for API requests
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', action.payload.token);
-        }
+        // Save token using tokenManager
+        setToken(action.payload.token);
+        console.log('Registration successful, token saved and state updated');
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
@@ -313,10 +310,9 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
-        // Remove token from localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-        }
+        // Remove token using tokenManager
+        clearAuthData();
+        console.log('Logout successful, token removed and state updated');
       })
       .addCase(logout.rejected, (state, action) => {
         state.loading = false;
@@ -340,10 +336,9 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
-        // Remove token from localStorage
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-        }
+        // Remove token using tokenManager
+        clearAuthData();
+        console.log('Fetch user profile failed, token removed and state updated');
       });
 
     // Update Profile

@@ -11,6 +11,8 @@ import ChangePasswordModal from "@/components/ChangePasswordModal";
 import toast from "react-hot-toast";
 import { updateProfileSchema } from "@/lib/validations/auth";
 import { z } from "zod";
+import useAuth from "@/hooks/useAuth";
+import { clearAuthData } from "@/lib/tokenManager";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -131,8 +133,9 @@ const Avatar = ({ src, name, size = 100, className = '' }: { src: string | null,
 
 export default function ProfilePage() {
   const dispatch = useAppDispatch();
-  const { user, loading, error } = useAppSelector((state: any) => state.auth);
   const router = useRouter();
+  // Use custom auth hook for authentication management
+  const { user, loading, error } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("");
@@ -356,10 +359,8 @@ export default function ProfilePage() {
           console.log('Authentication error detected, redirecting to login');
           toast.error('Your session has expired. Please log in again.');
 
-          // Clear local storage
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('token');
-          }
+          // Clear auth data
+          clearAuthData();
 
           setTimeout(() => {
             router.push('/auth/login');

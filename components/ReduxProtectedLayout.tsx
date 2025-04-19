@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import { fetchUserProfile, clearError } from "@/redux/slices/authSlice";
+import { getToken, clearAuthData } from "@/lib/tokenManager";
 
 export default function ReduxProtectedLayout({
   children,
@@ -25,14 +26,27 @@ export default function ReduxProtectedLayout({
   // Check authentication on initial load
   useEffect(() => {
     if (isClient) {
-      if (token && !user) {
-        console.log('Token found but no user data, fetching user profile');
+      const localToken = getToken();
+
+      // If we have a token in localStorage but no user in Redux state
+      if (localToken && !user) {
+        console.log('Token found in localStorage but no user in Redux state, fetching user profile');
         dispatch(fetchUserProfile());
-      } else if (!token) {
-        console.log('No token found in protected layout');
+      }
+      // If we have no token in localStorage but have a token in Redux state
+      // This is an inconsistent state that needs to be fixed
+      else if (!localToken && token) {
+        console.warn('Inconsistent auth state: Token in Redux but not in localStorage');
+        clearAuthData();
+        router.push('/auth/login');
+      }
+      // If we have no token in localStorage and no token in Redux state
+      else if (!localToken && !token && !pathname.startsWith("/auth")) {
+        console.log('No token found, redirecting to login');
+        router.push('/auth/login');
       }
     }
-  }, [isClient, token, user, dispatch]);
+  }, [isClient, token, user, dispatch, router, pathname]);
 
   // Handle redirects based on authentication state
   useEffect(() => {

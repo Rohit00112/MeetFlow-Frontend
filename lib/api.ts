@@ -111,15 +111,13 @@ export async function apiRequest<T = any>(
   return data;
 }
 
+import { getToken, clearAuthData } from './tokenManager';
+
 /**
- * Get the authentication token from localStorage
+ * Get the authentication token from tokenManager
  */
 export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  return localStorage.getItem('token');
+  return getToken();
 }
 
 /**
@@ -155,15 +153,12 @@ export async function authenticatedRequest<T = any>(
          error.message.includes('authentication') ||
          error.message.includes('Unauthorized') ||
          error.message.includes('Authentication'))) {
-      // Clear the invalid token
-      if (typeof window !== 'undefined') {
-        console.warn('Token validation failed, clearing auth state:', error.message);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      // Clear the invalid token using tokenManager
+      console.warn('Token validation failed, clearing auth state:', error.message);
+      clearAuthData();
 
-        // Don't redirect automatically - let the ProtectedLayout handle it
-        // This prevents redirect loops and allows for better error handling
-      }
+      // Don't redirect automatically - let the ProtectedLayout handle it
+      // This prevents redirect loops and allows for better error handling
     }
 
     console.error(`Authenticated request to ${endpoint} failed:`, error);
