@@ -362,9 +362,13 @@ export default function ProfilePage() {
           // Clear auth data
           clearAuthData();
 
+          // Use setTimeout with 0 delay to avoid React state updates during rendering
+          // Then use another setTimeout for the actual redirect delay
           setTimeout(() => {
-            router.push('/auth/login');
-          }, 2000);
+            setTimeout(() => {
+              router.push('/auth/login');
+            }, 2000);
+          }, 0);
         }
       }
     } catch (error) {

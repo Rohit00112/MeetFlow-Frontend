@@ -25,28 +25,42 @@ export default function ReduxProtectedLayout({
 
   // Check authentication on initial load
   useEffect(() => {
-    if (isClient) {
-      const localToken = getToken();
+    if (!isClient) return;
 
-      // If we have a token in localStorage but no user in Redux state
-      if (localToken && !user) {
-        console.log('Token found in localStorage but no user in Redux state, fetching user profile');
-        dispatch(fetchUserProfile());
-      }
-      // If we have no token in localStorage but have a token in Redux state
-      // This is an inconsistent state that needs to be fixed
-      else if (!localToken && token) {
-        console.warn('Inconsistent auth state: Token in Redux but not in localStorage');
-        clearAuthData();
-        router.push('/auth/login');
-      }
-      // If we have no token in localStorage and no token in Redux state
-      else if (!localToken && !token && !pathname.startsWith("/auth")) {
-        console.log('No token found, redirecting to login');
-        router.push('/auth/login');
-      }
+    const localToken = getToken();
+
+    // If we have a token in localStorage but no user in Redux state
+    if (localToken && !user) {
+      console.log('Token found in localStorage but no user in Redux state, fetching user profile');
+      dispatch(fetchUserProfile());
     }
-  }, [isClient, token, user, dispatch, router, pathname]);
+  }, [isClient, user, dispatch]);
+
+  // Handle inconsistent auth states
+  useEffect(() => {
+    if (!isClient) return;
+
+    const localToken = getToken();
+
+    // If we have no token in localStorage but have a token in Redux state
+    // This is an inconsistent state that needs to be fixed
+    if (!localToken && token) {
+      console.warn('Inconsistent auth state: Token in Redux but not in localStorage');
+      clearAuthData();
+      // Use setTimeout to avoid React state updates during rendering
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 0);
+    }
+    // If we have no token in localStorage and no token in Redux state
+    else if (!localToken && !token && !pathname.startsWith("/auth")) {
+      console.log('No token found, redirecting to login');
+      // Use setTimeout to avoid React state updates during rendering
+      setTimeout(() => {
+        router.push('/auth/login');
+      }, 0);
+    }
+  }, [isClient, token, router, pathname]);
 
   // Handle redirects based on authentication state
   useEffect(() => {

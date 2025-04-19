@@ -1,6 +1,6 @@
 /**
  * Token Manager - Centralized token management system
- * 
+ *
  * This utility provides a consistent way to handle authentication tokens
  * throughout the application, ensuring that the token state is synchronized
  * between localStorage and the Redux store.
@@ -11,9 +11,17 @@ export function getToken(): string | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  
+
   try {
     const token = localStorage.getItem('token');
+
+    // Validate token format (basic check)
+    if (token && (!token.includes('.') || token.split('.').length !== 3)) {
+      console.warn('Invalid token format detected in localStorage, clearing token');
+      localStorage.removeItem('token');
+      return null;
+    }
+
     return token;
   } catch (error) {
     console.error('Error getting token from localStorage:', error);
@@ -26,7 +34,13 @@ export function setToken(token: string): void {
   if (typeof window === 'undefined') {
     return;
   }
-  
+
+  // Validate token format (basic check)
+  if (!token || !token.includes('.') || token.split('.').length !== 3) {
+    console.error('Invalid token format, not saving to localStorage');
+    return;
+  }
+
   try {
     console.log('Setting token in localStorage');
     localStorage.setItem('token', token);
@@ -40,7 +54,7 @@ export function removeToken(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  
+
   try {
     console.log('Removing token from localStorage');
     localStorage.removeItem('token');
@@ -59,7 +73,7 @@ export function clearAuthData(): void {
   if (typeof window === 'undefined') {
     return;
   }
-  
+
   try {
     console.log('Clearing all auth data from localStorage');
     localStorage.removeItem('token');
