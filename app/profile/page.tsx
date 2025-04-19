@@ -8,6 +8,9 @@ import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import Link from "next/link";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
+import toast from "react-hot-toast";
+import { updateProfileSchema } from "@/lib/validations/auth";
+import { z } from "zod";
 
 // Helper function to get initials from name
 const getInitials = (name: string) => {
@@ -132,6 +135,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [bio, setBio] = useState("");
+  const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -140,6 +145,8 @@ export default function ProfilePage() {
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [bioError, setBioError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -155,6 +162,8 @@ export default function ProfilePage() {
     if (user) {
       setName(user.name);
       setEmail(user.email);
+      setBio(user.bio || "");
+      setPhone(user.phone || "");
       setProfileImageUrl(user.avatar || null);
     }
   }, [user]);
@@ -224,29 +233,46 @@ export default function ProfilePage() {
     // Reset errors
     setNameError(null);
     setEmailError(null);
+    setBioError(null);
+    setPhoneError(null);
     setSaveError(null);
 
-    let isValid = true;
+    try {
+      // Validate using Zod
+      updateProfileSchema.parse({
+        name,
+        email,
+        bio,
+        phone
+      });
 
-    // Validate name
-    if (!name.trim()) {
-      setNameError('Name is required');
-      isValid = false;
-    } else if (name.trim().length < 2) {
-      setNameError('Name must be at least 2 characters');
-      isValid = false;
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors = error.flatten().fieldErrors;
+
+        if (fieldErrors.name) {
+          setNameError(fieldErrors.name[0]);
+        }
+
+        if (fieldErrors.email) {
+          setEmailError(fieldErrors.email[0]);
+        }
+
+        if (fieldErrors.bio) {
+          setBioError(fieldErrors.bio[0]);
+        }
+
+        if (fieldErrors.phone) {
+          setPhoneError(fieldErrors.phone[0]);
+        }
+      } else {
+        setSaveError('Validation failed. Please check your inputs.');
+      }
+
+      return false;
     }
-
-    // Validate email
-    if (!email.trim()) {
-      setEmailError('Email is required');
-      isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Please enter a valid email address');
-      isValid = false;
-    }
-
-    return isValid;
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -280,17 +306,26 @@ export default function ProfilePage() {
           console.log('Image converted to base64 successfully');
         } catch (error) {
           console.error('Error converting image to base64:', error);
-          setSaveError('Failed to process the image. Please try again with a different image.');
+          const errorMessage = 'Failed to process the image. Please try again with a different image.';
+          toast.error(errorMessage);
+          setSaveError(errorMessage);
           setSaveLoading(false);
           return;
         }
       }
 
       // Update profile using Redux
-      const resultAction = await dispatch(updateProfileAction({ name, email, profileImage: imageBase64 }));
+      const resultAction = await dispatch(updateProfileAction({
+        name,
+        email,
+        bio,
+        phone,
+        profileImage: imageBase64
+      }));
 
       if (updateProfileAction.fulfilled.match(resultAction)) {
         // Show success message
+        toast.success('Profile updated successfully!');
         setSaveSuccess(true);
 
         // Exit edit mode after a short delay
@@ -300,10 +335,14 @@ export default function ProfilePage() {
         }, 2000);
       } else if (updateProfileAction.rejected.match(resultAction)) {
         // Handle the rejected action
-        setSaveError(resultAction.payload as string || "Failed to update profile");
+        const errorMessage = resultAction.payload as string || "Failed to update profile";
+        toast.error(errorMessage);
+        setSaveError(errorMessage);
       }
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "Failed to update profile. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to update profile. Please try again.";
+      toast.error(errorMessage);
+      setSaveError(errorMessage);
       console.error("Profile update failed:", error);
     } finally {
       setSaveLoading(false);
@@ -362,10 +401,23 @@ export default function ProfilePage() {
           <div className="px-6 py-8 sm:px-8 flex justify-between items-center border-b border-gray-200">
             <div className="text-center w-full mt-4">
               <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
-              <p className="text-gray-500 flex items-center justify-center mt-1">
-                <Icon icon="heroicons:envelope" className="h-4 w-4 mr-1" />
-                {email}
-              </p>
+              <div className="flex flex-col items-center space-y-2 mt-2">
+                <p className="text-gray-500 flex items-center justify-center">
+                  <Icon icon="heroicons:envelope" className="h-4 w-4 mr-1" />
+                  {email}
+                </p>
+                {phone && (
+                  <p className="text-gray-500 flex items-center justify-center">
+                    <Icon icon="heroicons:phone" className="h-4 w-4 mr-1" />
+                    {phone}
+                  </p>
+                )}
+              </div>
+              {bio && !isEditing && (
+                <div className="mt-4 max-w-md mx-auto">
+                  <p className="text-gray-600 text-sm italic">"{bio}"</p>
+                </div>
+              )}
               <div className="mt-4 flex justify-center space-x-3">
                 {!isEditing ? (
                   <button
@@ -496,6 +548,54 @@ export default function ProfilePage() {
                           <p className="mt-1 text-sm text-red-600 flex items-center">
                             <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
                             {emailError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="group">
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <Icon icon="heroicons:phone" className="h-4 w-4 mr-1 text-blue-500" />
+                        Phone Number
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <input
+                          type="tel"
+                          name="phone"
+                          id="phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${phoneError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
+                          placeholder="Your phone number (optional)"
+                        />
+                        {phoneError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {phoneError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="group sm:col-span-2">
+                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                        <Icon icon="heroicons:document-text" className="h-4 w-4 mr-1 text-blue-500" />
+                        Bio
+                      </label>
+                      <div className="relative rounded-md shadow-sm">
+                        <textarea
+                          name="bio"
+                          id="bio"
+                          rows={4}
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          className={`block w-full px-4 py-3 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-300 ${bioError ? 'border-red-300 text-red-900 placeholder-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}`}
+                          placeholder="Tell us about yourself (optional)"
+                        />
+                        {bioError && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <Icon icon="heroicons:exclamation-circle" className="h-4 w-4 mr-1" />
+                            {bioError}
                           </p>
                         )}
                       </div>

@@ -106,7 +106,19 @@ export const fetchUserProfile = createAsyncThunk('auth/fetchUserProfile', async 
 export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (
-    { name, email, profileImage }: { name: string; email: string; profileImage?: string | null },
+    {
+      name,
+      email,
+      bio,
+      phone,
+      profileImage
+    }: {
+      name: string;
+      email: string;
+      bio?: string;
+      phone?: string;
+      profileImage?: string | null
+    },
     { getState, rejectWithValue }
   ) => {
     try {
@@ -125,12 +137,18 @@ export const updateProfile = createAsyncThunk(
       }
 
       // Log the data being sent to the API
-      console.log('Sending profile update data:', { name, email, profileImage: profileImage ? 'base64_image_data' : null });
+      console.log('Sending profile update data:', {
+        name,
+        email,
+        bio: bio || null,
+        phone: phone || null,
+        profileImage: profileImage ? 'base64_image_data' : null
+      });
 
       // Call the backend update profile endpoint
       const data = await authenticatedRequest('/auth/update-profile', {
         method: 'PUT',
-        body: { name, email, avatar: profileImage },
+        body: { name, email, bio, phone, avatar: profileImage },
       });
 
       console.log('Update profile response:', data);

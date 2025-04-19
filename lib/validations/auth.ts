@@ -41,6 +41,18 @@ export const updateProfileSchema = z.object({
     .string()
     .min(1, { message: 'Email is required' })
     .email({ message: 'Invalid email address' }),
+  bio: z
+    .string()
+    .optional()
+    .transform(val => val === '' ? undefined : val),
+  phone: z
+    .string()
+    .optional()
+    .transform(val => val === '' ? undefined : val)
+    .refine(
+      (val) => !val || /^\+?[0-9\s\-\(\)]+$/.test(val),
+      { message: 'Invalid phone number format' }
+    ),
 });
 
 export const changePasswordSchema = z.object({

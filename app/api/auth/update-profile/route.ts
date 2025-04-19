@@ -7,32 +7,38 @@ export async function PUT(request: NextRequest) {
   try {
     // Get authorization header
     const authHeader = request.headers.get('authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     // Extract token
     const token = authHeader.split(' ')[1];
-    
+
     // Verify token
     const payload = verifyJWT<{ id: string }>(token);
-    
+
     if (!payload || !payload.id) {
       return NextResponse.json(
         { error: 'Invalid token' },
         { status: 401 }
       );
     }
-    
+
     // Parse request body
     const body = await request.json();
-    const { name, email, avatar } = body;
-    console.log('Profile update request received:', { name, email, hasAvatar: !!avatar });
-    
+    const { name, email, bio, phone, avatar } = body;
+    console.log('Profile update request received:', {
+      name,
+      email,
+      bio: bio || null,
+      phone: phone || null,
+      hasAvatar: !!avatar
+    });
+
     // Process avatar if provided
     let avatarUrl = undefined;
     if (avatar && typeof avatar === 'string' && avatar.startsWith('data:image')) {
@@ -42,24 +48,28 @@ export async function PUT(request: NextRequest) {
       avatarUrl = avatar;
       console.log('Profile image processed successfully');
     }
-    
+
     // Update user
     const updatedUser = await prisma.user.update({
       where: { id: payload.id },
       data: {
         name,
         email,
+        ...(bio !== undefined && { bio }),
+        ...(phone !== undefined && { phone }),
         ...(avatarUrl && { avatar: avatarUrl }),
       },
     });
-    
+
     console.log('User profile updated successfully');
-    
+
     // Return updated user data
     return NextResponse.json({
       id: updatedUser.id,
       name: updatedUser.name,
       email: updatedUser.email,
+      bio: updatedUser.bio,
+      phone: updatedUser.phone,
       avatar: updatedUser.avatar,
     });
   } catch (error) {
