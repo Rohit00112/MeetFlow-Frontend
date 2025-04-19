@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Icon } from "@iconify/react/dist/iconify.js";
-import GoogleLogo from "@/public/google-logo.svg";
 import toast from "react-hot-toast";
 import { loginSchema } from "@/lib/validations/auth";
 import { z } from "zod";
