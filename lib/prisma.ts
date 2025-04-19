@@ -1,30 +1,15 @@
-// Mock PrismaClient for development
-class MockPrismaClient {
-  user: any;
-  meeting: any;
+import { PrismaClient } from '@prisma/client';
 
-  constructor() {
-    this.user = {
-      findUnique: async () => null,
-      findFirst: async () => null,
-      create: async (data: any) => data.data,
-      update: async (data: any) => data.data,
-    };
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+// Learn more: https://pris.ly/d/help/next-js-best-practices
 
-    this.meeting = {
-      findUnique: async () => null,
-      findFirst: async () => null,
-      create: async (data: any) => data.data,
-      update: async (data: any) => data.data,
-    };
-  }
-}
-
-// This is a temporary solution until Prisma is properly set up
-const globalForPrisma = global as unknown as { prisma: MockPrismaClient };
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 export const prisma =
   globalForPrisma.prisma ||
-  new MockPrismaClient();
+  new PrismaClient({
+    log: ['query', 'error', 'warn'],
+  });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
